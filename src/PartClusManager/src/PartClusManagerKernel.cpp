@@ -475,8 +475,8 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
         std::vector<unsigned long> setAreas;
 
         PartSolutions currentResults = _results[partitionId];
-        for (unsigned idx = 0; idx < currentResults.getNumOfRuns(); idx++)
-        {
+        for (unsigned idx = 0; idx < currentResults.getNumOfRuns(); idx++){
+
                 std::vector<short> currentAssignment = currentResults.getAssignment(idx);
                 unsigned long currentRuntime = currentResults.getRuntime(idx);
                 int currentSeed = currentResults.getSeed(idx);
@@ -484,112 +484,45 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
                 unsigned long terminalCounter = 0; 
                 unsigned long cutCounter = 0; 
                 unsigned long edgeTotalWeigth = 0; 
-                std::map<short, unsigned long> setSize; 
-                std::map<short, unsigned long> setArea; 
-                std::vector<unsigned> computedVertices;
-
-                for (odb::dbNet* net : block->getNets()){
-                        int nITerms = (net->getITerms()).size();
-                        int nBTerms = (net->getBTerms()).size();
-                        if (net->isSpecial() || (nITerms + nBTerms) < 2){
-                                continue;
-                        }
-
-                        short currentInstPart = 9999;
-                        bool edgeWasCut = false;
-                        std::vector<short> parentPartitions;
-                        std::vector<unsigned> netVertices;
-                        
-                        //Terminals ----------
-                        for (odb::dbITerm* iterm : net->getITerms()){
-                                odb::dbInst* inst = iterm->getInst();
-                                if ( !(_graph.isInMap(inst->getName())) ){
-                                        edgeWasCut = true;
-                                        terminalCounter = terminalCounter + 1;
-                                        continue;
-                                }
-                                unsigned idx = _graph.getMapping(inst->getName());
-                                short cl = currentAssignment[idx];
-                                //Got the cluster that the ITerm was part of.
-                                if (currentInstPart == 9999){
-                                        //If this is the first pass, set the cluster index in the currentInstPart variable.
-                                        currentInstPart = cl;
-                                } else if ((currentInstPart != cl) && (std::find(parentPartitions.begin(), parentPartitions.end(), cl) == parentPartitions.end())){
-                                        //If the cluster changed, and it change to a cluster that wasn't previously computed in this net, add a new terminal to the old cluster.
-                                        parentPartitions.push_back(currentInstPart); //Old cluster can't be used anymore for this net.
-                                        terminalCounter = terminalCounter + 1;
-                                        //The new cluster becomes the old one.
-                                        currentInstPart = cl;
-                                        //The edge was CUT! (new hypercut edge.)
-                                        edgeWasCut = true;
-                                }
-                                netVertices.push_back(idx);
-                                //Set size and area ----------
-                                if (std::find(computedVertices.begin(), computedVertices.end(), idx) == computedVertices.end()){
-                                        if ( setSize.find(cl) == setSize.end() ) {
-                                                setSize[cl] = 1;
-                                                setArea[cl] = _graph.getVertexWeight(idx);
-                                        } else {
-                                                setSize[cl] = setSize[cl] + 1;
-                                                setArea[cl] = setArea[cl] + _graph.getVertexWeight(idx);
+                std::vector<unsigned long> setSize (_options.getTargetPartitions(),0);
+                std::vector<unsigned long> setArea (_options.getTargetPartitions(),0);
+                
+                std::vector<int> hyperedgesEnd = _hypergraph.getRowPtr();
+                std::vector<int> hyperedgeNets = _hypergraph.getColIdx();
+                std::set<unsigned> computedVertices;
+                int startIndex = 0;
+                
+                for (int endIndex : hyperedgesEnd){ //Iterate over each net in the hypergraph.
+                        std::set<short> netPartitions; //Contains the partitions the net is part of.
+                        std::vector<unsigned> netVertices; //Contains the vertices that are in the net.
+                        if (endIndex != 0){
+                                for (int currentIndex = startIndex; currentIndex < endIndex; currentIndex++){ //Iterate over all vertices in the net.
+                                        int currentVertex = hyperedgeNets[currentIndex];
+                                        short currentPartition = currentAssignment[currentVertex];
+                                        netPartitions.insert(currentPartition);
+                                        unsigned long currentVertexWeight = _hypergraph.getVertexWeight(idx);
+                                        netVertices.push_back(currentVertex);
+                                        if (computedVertices.find(currentVertex) == computedVertices.end()){//Update the partition size and area if needed.
+                                                setSize[currentPartition] = setSize[currentPartition] + 1;
+                                                setArea[currentPartition] = setArea[currentPartition] + _graph.getVertexWeight(currentVertex);
+                                                computedVertices.insert(currentVertex);
                                         }
-                                        computedVertices.push_back(idx);
                                 }
                         }
-                        for (odb::dbBTerm* bterm : net->getBTerms()){
-                                if ( !(_graph.isInMap(bterm->getName())) ){
-                                        edgeWasCut = true;
-                                        terminalCounter = terminalCounter + 1;
-                                        continue;
-                                }
-                                unsigned idx = _graph.getMapping(bterm->getName());
-                                short cl = currentAssignment[idx];
-                                //Got the cluster that the BTerm was part of.
-                                if (currentInstPart == 9999){
-                                        //If this is the first pass, set the cluster index in the currentInstPart variable.
-                                        currentInstPart = cl;
-                                } else if ((currentInstPart != cl) && (std::find(parentPartitions.begin(), parentPartitions.end(), cl) == parentPartitions.end())){
-                                        //If the cluster changed, and it change to a cluster that wasn't previously computed in this net, add a new terminal to the old cluster.
-                                        parentPartitions.push_back(currentInstPart); //Old cluster can't be used anymore for this net.
-                                        terminalCounter = terminalCounter + 1;
-                                        //The new cluster becomes the old one.
-                                        currentInstPart = cl;
-                                        //The edge was CUT! (new hypercut edge.)
-                                        edgeWasCut = true;
-                                }
-                                netVertices.push_back(idx);
-                                //Set size and area ----------
-                                if (std::find(computedVertices.begin(), computedVertices.end(), idx) == computedVertices.end()){
-                                        if ( setSize.find(cl) == setSize.end() ) {
-                                                setSize[cl] = 1;
-                                                setArea[cl] = _graph.getVertexWeight(idx);
-                                        } else {
-                                                setSize[cl] = setSize[cl] + 1;
-                                                setArea[cl] = setArea[cl] + _graph.getVertexWeight(idx);
-                                        }
-                                        computedVertices.push_back(idx);
-                                }
-                        }
-                        if (edgeWasCut && (std::find(parentPartitions.begin(), parentPartitions.end(), currentInstPart) == parentPartitions.end()) && (currentInstPart != 9999)){
-                                //If the edge was cut, and the last cluster wasn't previously computed for this new, add a new terminal to that cluster.
-                                terminalCounter = terminalCounter + 1;
-                        }
-                        //HyperEdge Cuts ----------
-                        if (edgeWasCut){
-                                //If the edge was cut, a hyperedge cut is present for this net.
-                                cutCounter = cutCounter + 1;
-                                //Also add the total weigth for this hyperedge cut.
-                                unsigned currentVertex = netVertices.back();
+                        if (netPartitions.size() > 1) { //Net was cut.
+                                cutCounter = cutCounter + 1; //If the net was cut, a hyperedge cut happened.
+                                terminalCounter = terminalCounter + netPartitions.size(); // The number of different partitions present in the net is the number of terminals. (Pathways to another set.)
+                                //Computations for hop weight:
+                                unsigned currentVertex = netVertices.back(); // Gets one of the vertices.
                                 netVertices.pop_back();
-                                int currentRow = _graph.getRowPtr(currentVertex);
+                                int currentRow = _graph.getRowPtr(currentVertex); // Gets the index of the adjacency list based on the CRS format.
                                 unsigned vertexEnd = 0;
-                                if (_graph.getRowPtr().size() == (currentVertex + 1)){
+                                if (_graph.getRowPtr().size() == (currentVertex + 1)){ // Error handling when using the last vertex on the list.
                                         vertexEnd = _graph.getColIdx().size();
                                 } else {
                                         vertexEnd = _graph.getRowPtr(currentVertex + 1);
                                 }
-                                while (currentRow < vertexEnd)
-                                {
+                                while (currentRow < vertexEnd){ // Iterate through each edge update the total edge weight. (hop weight, the hyperedge weight.)
                                         unsigned currentConnection = _graph.getColIdx(currentRow);
                                         if (std::find(netVertices.begin(), netVertices.end(), currentConnection) != netVertices.end()) {
                                                 edgeTotalWeigth = edgeTotalWeigth + _graph.getEdgeWeight(currentRow);
@@ -597,29 +530,30 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
                                         currentRow++;
                                 }
                         }
+                        startIndex = endIndex;
                 }
-                
-                //Computation for the standard deviation of set size 
+
+                //Computation for the standard deviation of set size. 
                 double currentSum = 0;
-                for (std::pair<short, unsigned long> clusterSize : setSize) {
-                        currentSum = currentSum + clusterSize.second;
+                for (unsigned long clusterSize : setSize) {
+                        currentSum = currentSum + clusterSize;
                 }
                 double currentMean = currentSum / setSize.size();
                 double sizeSD = 0;
-                for (std::pair<short, unsigned long> clusterSize : setSize) {
-                        sizeSD = sizeSD + std::pow(clusterSize.second - currentMean, 2);
+                for (unsigned long clusterSize : setSize) {
+                        sizeSD = sizeSD + std::pow(clusterSize - currentMean, 2);
                 }
                 sizeSD = std::sqrt(sizeSD / setSize.size());
 
-                //Computation for the standard deviation of set area 
+                //Computation for the standard deviation of set area. 
                 currentSum = 0;
-                for (std::pair<short, unsigned long> clusterArea : setArea) {
-                        currentSum = currentSum + clusterArea.second;
+                for (unsigned long clusterArea : setArea) {
+                        currentSum = currentSum + clusterArea;
                 }
                 currentMean = currentSum / setArea.size();
                 double areaSD = 0;
-                for (std::pair<short, unsigned long> clusterArea : setArea) {
-                        areaSD = areaSD + std::pow(clusterArea.second - currentMean, 2);
+                for (unsigned long clusterArea : setArea) {
+                        areaSD = areaSD + std::pow(clusterArea - currentMean, 2);
                 }
                 areaSD = std::sqrt(areaSD / setArea.size());
 
