@@ -71,6 +71,12 @@ void PartClusManagerKernel::runChaco() {
         currentResults.setPartitionId(partitionId);
         currentResults.setNumOfRuns(_options.getSeeds().size());
         std::string evaluationFunction = _options.getEvaluationFunction();
+        
+        PartSolutions bestResult;
+        bestResult.setToolName(_options.getTool());
+        bestResult.setPartitionId(partitionId);
+        bestResult.setNumOfRuns(1);
+        int firstRun = 0;
 
         std::vector<int> edgeWeights = _graph.getEdgeWeight();
 	std::vector<int> vertexWeights = _graph.getVertexWeight();
@@ -219,13 +225,59 @@ void PartClusManagerKernel::runChaco() {
                 currentResults.addAssignment(chacoResult, runtime, seed);
                 free(assigment);
 
-                std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
-        }
-        _results.push_back(currentResults);
-        free(mesh_dims);
-        computePartitionResult(partitionId, evaluationFunction);
+                if (_options.getSeeds().size() > 19){
+                        if (firstRun <= 0){
+                                bestResult.addAssignment(chacoResult, runtime, seed);
+                                _results.push_back(bestResult);
+                                computePartitionResult(partitionId, evaluationFunction);
+                                bestResult = _results.back();
+                                currentResults.clearAssignments();
+                        } else {
+                                currentResults.setNumOfRuns(1);
+                                currentResults.setPartitionId(partitionId + 1);
+                                _results.push_back(currentResults);
+                                computePartitionResult((partitionId + 1), evaluationFunction);
+                                currentResults = _results.back();
+                                bool isNewIdBetter = comparePartitionings(bestResult,
+                                                                          currentResults,
+                                                                          evaluationFunction);
+                                if (isNewIdBetter){
+                                        _results.pop_back();
+                                        _results.pop_back();
+                                        bestResult.clearAssignments();
+                                        bestResult.addAssignment(chacoResult, runtime, seed);
 
-        std::cout << "Chaco run completed. Partition ID = " << partitionId << ".\n";
+                                        bestResult.setBestSolutionIdx(0);
+                                        bestResult.setBestRuntime(runtime);
+                                        bestResult.setBestNumHyperedgeCuts(currentResults.getBestNumHyperedgeCuts());
+                                        bestResult.setBestNumTerminals(currentResults.getBestNumTerminals());
+                                        bestResult.setBestHopWeigth(currentResults.getBestHopWeigth());
+                                        bestResult.setBestSetSize(currentResults.getBestSetSize());
+                                        bestResult.setBestSetArea(currentResults.getBestSetArea());
+
+                                        _results.push_back(bestResult);
+                                        currentResults.clearAssignments();
+                                } else {
+                                        _results.pop_back();
+                                        currentResults.clearAssignments();
+                                }
+                        }
+                        firstRun = firstRun + 1;
+                        if (firstRun % 100 == 0){
+                                std::cout << "Partitioned graph for " << firstRun << " seeds.\n";
+                        }
+                } else {
+                        std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
+                }
+        }
+
+        if (_options.getSeeds().size() <= 19){
+                _results.push_back(currentResults);
+                computePartitionResult(partitionId, evaluationFunction);
+        }
+        free(mesh_dims);
+
+        std::cout << "Chaco run completed. Partition ID = " << partitionId << ". Total runs = " << _options.getSeeds().size() << ".\n";
 }
 
 void PartClusManagerKernel::runGpMetis() {

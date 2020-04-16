@@ -122,6 +122,11 @@ public:
                 _runtimeResults.push_back(runtime);
                 _seeds.push_back(seed);
         }
+        void clearAssignments() {
+                _assignmentResults.clear();
+                _runtimeResults.clear();
+                _seeds.clear();
+        }
         const std::vector<short>& getAssignment(unsigned idx) const { return _assignmentResults[idx]; }
         unsigned long getRuntime(unsigned idx) const { return _runtimeResults[idx]; }
         int getSeed(unsigned idx) const { return _seeds[idx]; }
