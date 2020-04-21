@@ -125,5 +125,6 @@ int       DEBUG_TRACE = 0;	/* Trace main execution path (0..2) */
 int       DEBUG_MACH_PARAMS = 0;/* Print computed machine params? (0..1) */
 
 int		  DEBUG_PARTCLUSMANAGER = 0; /* Print output when using PartClusManager? (0..1) */
+int 	  CLUSTERING_EXPORT = 1; /* Which level of clustering to export to the DB */
 
 struct coarlist  CLUSTERING_RESULTS = {0};

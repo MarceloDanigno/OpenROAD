@@ -224,4 +224,30 @@ void dump_part_id_to_file(const char *name) {
         kernel->dumpPartIdToFile(name);
 }
 
+unsigned run_clustering() {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->runClustering();
+        unsigned id = kernel->getCurrentClusId();
+        return id;
+}
+
+void set_level(unsigned value) {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->getOptions().setLevel(value);
+}
+
+void write_clustering_to_db(unsigned id) {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->writeClusteringToDb(id);
+}
+
+void dump_clus_id_to_file(const char* name) {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->dumpClusIdToFile(name);
+}
+
 } // end namespace

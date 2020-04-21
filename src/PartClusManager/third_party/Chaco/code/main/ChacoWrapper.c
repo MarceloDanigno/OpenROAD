@@ -8,7 +8,7 @@ int       interface_wrap(int nvtxs, int *start, int *adjacency, int *vwgts, floa
 		              int global_method, int local_method, int rqi_flag, int vmax, int ndims,
 		              double eigtol, long seed,
 					  int tprop, double kl_inbalance, double coarsening_ratio, double cut_to_hop_cost,
-					  int debug_print, int refine_part)
+					  int debug_print, int refine_part, int level)
 {
 
 	extern int TERM_PROP;	  /* perform terminal propagation */
@@ -17,6 +17,7 @@ int       interface_wrap(int nvtxs, int *start, int *adjacency, int *vwgts, floa
     extern double CUT_TO_HOP_COST;	/* ..if so, relative cut/hop importance */
 	extern int DEBUG_PARTCLUSMANAGER;
 	extern int REFINE_PARTITION;
+	extern int CLUSTERING_EXPORT;
 
 	static int *termprop = &TERM_PROP;
 	static double *inbalance = &KL_IMBALANCE;
@@ -24,6 +25,7 @@ int       interface_wrap(int nvtxs, int *start, int *adjacency, int *vwgts, floa
 	static double *cutcost = &CUT_TO_HOP_COST;
 	static int *printtext = &DEBUG_PARTCLUSMANAGER;
 	static int *refine = &REFINE_PARTITION;
+	static int *cluslevel = &CLUSTERING_EXPORT;
 
 	*termprop = tprop;
 	*inbalance = kl_inbalance;
@@ -31,6 +33,7 @@ int       interface_wrap(int nvtxs, int *start, int *adjacency, int *vwgts, floa
 	*cutcost = cut_to_hop_cost;
 	*printtext = debug_print;
 	*refine = refine_part;
+	*cluslevel = level;
 
 
 	interface(nvtxs, start, adjacency, vwgts, ewgts, x, y, z,

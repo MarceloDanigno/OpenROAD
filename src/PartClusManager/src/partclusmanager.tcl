@@ -309,3 +309,89 @@ proc write_partitioning_to_db { args } {
     PartClusManager::dump_part_id_to_file $keys(-dump_to_file)
   } 
 }
+
+#--------------------------------------------------------------------
+# Cluster netlist command
+#--------------------------------------------------------------------
+
+sta::define_cmd_args "cluster_netlist" { [-tool name] \
+                                         [-coarsening_ratio value] \
+                                         [-coarsening_vertices value] \
+                                         [-level values] \
+                                        }
+proc cluster_netlist { args } {
+  sta::parse_key_args "cluster_netlist" args \
+    keys {-tool \
+          -coarsening_ratio \
+          -coarsening_vertices \
+          -level \
+         } flags {}
+
+  # Tool
+  set tools "chaco gpmetis mlpart"
+  if { ![info exists keys(-tool)] } {
+    puts "\[ERROR\] Missing mandatory argument -tool"
+    return
+  } elseif { !($keys(-tool) in $tools) } {
+    puts "\[ERROR\] Invalid tool. Use one of the following: $tools"
+    return
+  } else {
+     PartClusManager::set_tool $keys(-tool)
+  }
+
+  # Coarsening ratio 
+  if { [info exists keys(-coarsening_ratio)] } {
+       if { !([string is double $keys(-coarsening_ratio)] && \
+              $keys(-coarsening_ratio) >= 0.5 && $keys(-coarsening_ratio) <= 1.0) } {
+      puts "\[ERROR\] Argument -coarsening_ratio should be a floating number in the range \[0.5, 1.0\]"
+      return
+    } else {
+       PartClusManager::set_coarsening_ratio $keys(-coarsening_ratio)
+    }       
+  }
+
+  # Coarsening vertices
+  if { [info exists keys(-coarsening_vertices)] } {
+       PartClusManager::set_coarsening_vertices $keys(-coarsening_vertices)
+  }
+
+  # Levels
+  if { [info exists keys(-level)] } {
+        PartClusManager::set_level $keys(-level)
+  }
+
+  PartClusManager::generate_seeds 1
+
+  set currentId [PartClusManager::run_clustering]
+  
+  return $currentId
+}
+
+#--------------------------------------------------------------------
+# Write clustering to DB command
+#--------------------------------------------------------------------
+
+sta::define_cmd_args "write_clustering_to_db" { [-clustering_id id] \
+                                                [-dump_to_file name] \
+                                              }
+
+proc write_clustering_to_db { args } {
+  sta::parse_key_args "write_clustering_to_db" args \
+    keys { -clustering_id \
+           -dump_to_file \
+         } flags { }
+
+  set clustering_id 0
+  if { ![info exists keys(-clustering_id)] } {
+    puts "\[ERROR\] Missing mandatory argument -clustering_id"
+    return
+  } else {
+    set clustering_id $keys(-clustering_id)
+  } 
+  
+  PartClusManager::write_clustering_to_db $clustering_id
+
+  if { [info exists keys(-dump_to_file)] } {
+    PartClusManager::dump_clus_id_to_file $keys(-dump_to_file)
+  } 
+}

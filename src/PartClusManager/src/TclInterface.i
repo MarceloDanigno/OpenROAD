@@ -65,4 +65,8 @@ extern unsigned run_partitioning();
 extern unsigned evaluate_partitioning();
 extern void write_partitioning_to_db(unsigned id);
 extern void dump_part_id_to_file(const char* name); 
+extern unsigned run_clustering();
+extern void set_level(unsigned value);
+extern void write_clustering_to_db(unsigned id);
+extern void dump_clus_id_to_file(const char* name); 
 }

@@ -60,5 +60,9 @@ unsigned run_partitioning();
 unsigned evaluate_partitioning();
 void write_partitioning_to_db(unsigned id);
 void dump_part_id_to_file(const char *name);
+unsigned run_clustering();
+void set_level(unsigned value);
+void write_clustering_to_db(unsigned id);
+void dump_clus_id_to_file(const char* name); 
 }
 

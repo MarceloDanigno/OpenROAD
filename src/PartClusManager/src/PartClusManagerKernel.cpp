@@ -113,6 +113,8 @@ void PartClusManagerKernel::runChaco() {
 
         double cutCost = _options.getCutHopRatio();
 
+        int level = _options.getLevel();
+
         int partitioningMethod = 1; //Multi-level KL
 
         int kWay = 1; //recursive 2-way
@@ -201,24 +203,15 @@ void PartClusManagerKernel::runChaco() {
                                0.001, seed,                             /* tolerance on eigenvectors (hard-coded, not used) and the seed */
                                termPropagation, inbalance,              /* terminal propagation enable and inbalance */
                                coarRatio, cutCost,                      /* coarsening ratio and cut to hop cost */
-                               0, refinement);                          /* debug text enable and refinement */
+                               0, refinement, level);                   /* debug text enable, refinement and clustering level to export*/
 
                 std::vector<short> chacoResult;
                 
-                if (1) { // if clustering
-                        for (int i = 0; i < numVertices; i++) {
-                                short* currentpointer = assigment + i;
-                                chacoResult.push_back(*currentpointer);
-                        }
-                } else {
-                        int* clusteringResults = clustering_wrap();
-                        for (int i = 0; i < numVertices; i++) {
-                                int* currentpointer = (clusteringResults + 1) + i;
-                                chacoResult.push_back(*currentpointer);
-                                //std::cout << "part Idx: " << i << " mapped to cluster:" << *currentpointer << ".\n";
-                        }
-                        free(clusteringResults);
+                for (int i = 0; i < numVertices; i++) {
+                        short* currentpointer = assigment + i;
+                        chacoResult.push_back(*currentpointer);
                 }
+                
                 auto end = std::chrono::system_clock::now();
                 unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -714,6 +707,242 @@ void PartClusManagerKernel::dumpPartIdToFile(std::string name) {
         for (odb::dbInst* inst: block->getInsts()) {
                 std::string instName = inst->getName();
                 odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "partition_id");
+                if (!propId) {
+                        std::cout << "[ERROR] Property not found for inst " << instName << "\n";
+                        continue;
+                }
+                file << instName << " " << propId->getValue() << "\n";
+        }
+
+        file.close();
+}
+
+// Cluster Netlist
+
+void PartClusManagerKernel::runClustering() {
+        hypergraph();
+        graph();
+        if (_options.getTool() == "mlpart") {
+                runMlPartClustering();
+        } else if (_options.getTool() == "gpmetis") {
+                runGpMetisClustering();
+        } else {
+                runChacoClustering();
+        }
+}
+
+void PartClusManagerKernel::runChacoClustering() {
+        std::cout << "\nRunning chaco...\n";
+
+        PartSolutions currentResults;
+        currentResults.setToolName(_options.getTool());
+        unsigned clusterId = generateClusterId();
+        currentResults.setPartitionId(clusterId);
+        currentResults.setNumOfRuns(_options.getSeeds().size());
+        std::string evaluationFunction = _options.getEvaluationFunction();
+
+        std::vector<int> edgeWeights = _graph.getEdgeWeight();
+	std::vector<int> vertexWeights = _graph.getVertexWeight();
+	std::vector<int> colIdx = _graph.getColIdx();
+	std::vector<int> rowPtr = _graph.getRowPtr();
+        int numVertices = vertexWeights.size();
+        
+        int architecture = _options.getArchTopology().size();
+        int architectureDims = 1;
+        int* mesh_dims = (int*) malloc((unsigned) 3 * sizeof(int));
+        if (architecture > 0){
+                std::vector<int> archTopology = _options.getArchTopology();
+                for (int i = 0; ((i < architecture) && (i < 3)) ; i++)
+                {
+                        mesh_dims[i] = archTopology[i];
+                        architectureDims = architectureDims * archTopology[i];
+                }
+        }
+
+        int hypercubeDims = 1;
+
+        int numVertCoar = _options.getCoarVertices();
+
+        int refinement = _options.getRefinement();
+
+        int termPropagation = 0;
+        if (_options.getTermProp()) {
+                termPropagation = 1;
+        }
+
+        double inbalance = (double) _options.getBalanceConstraint() / 100;
+
+        double coarRatio = _options.getCoarRatio();
+
+        double cutCost = _options.getCutHopRatio();
+
+        int level = _options.getLevel();
+
+        int partitioningMethod = 1; //Multi-level KL
+
+        int kWay = 1; //recursive 2-way
+
+        for (long seed : _options.getSeeds()) {
+                auto start = std::chrono::system_clock::now();
+                std::time_t startTime = std::chrono::system_clock::to_time_t(start);
+
+                int* starts = (int*) malloc((unsigned) (numVertices + 1) * sizeof(int));
+                int* currentIndex = starts;
+                for (int pointer : rowPtr){
+                        *currentIndex = (pointer); 
+                        currentIndex++;
+                }
+                *currentIndex = colIdx.size(); // Needed so Chaco can find the end of the interval of the last vertex
+
+                int* vweights = (int*) malloc((unsigned) numVertices * sizeof(int));
+                currentIndex = vweights;
+                for (int weigth : vertexWeights){
+                        *currentIndex = weigth; 
+                        currentIndex++;
+                }
+
+                int* adjacency = (int*) malloc((unsigned) colIdx.size() * sizeof(int));
+                currentIndex = adjacency;
+                for (int pointer : colIdx){
+                        *currentIndex = (pointer + 1); 
+                        currentIndex++;
+                }
+
+                float* eweights = (float*) malloc((unsigned) colIdx.size() * sizeof(float));
+                float* currentIndexFloat = eweights;
+                for (int weigth : edgeWeights){
+                        *currentIndexFloat = weigth; 
+                        currentIndexFloat++;
+                }
+
+                short* assigment = (short*) malloc((unsigned) numVertices * sizeof(short));
+
+                int oldTargetPartitions = 0;
+
+                if (_options.getExistingID() > -1) {
+                        //If a previous solution ID already exists...
+                        PartSolutions existingResult = _results[_options.getExistingID()];
+                        unsigned existingBestIdx = existingResult.getBestSolutionIdx();
+                        const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
+                        //Gets the vertex assignments results from the last ID.
+                        short* currentIndexShort = assigment;
+                        for(short existingPartId : vertexResult) {
+                                //Apply the Partition IDs to the current assignment vector.
+                                if (existingPartId > oldTargetPartitions){
+                                        oldTargetPartitions = existingPartId;
+                                }
+                                *currentIndexShort = existingPartId; 
+                                currentIndexShort++;
+                        }
+
+                        partitioningMethod = 7;
+                        kWay = hypercubeDims;
+                        oldTargetPartitions = oldTargetPartitions + 1;
+
+                        if (architecture) {
+                                hypercubeDims = (int) (std::sqrt( (float) (architectureDims) ));
+                                kWay = hypercubeDims;
+                                if (kWay > 3 || architectureDims < oldTargetPartitions || architectureDims % 2 == 1) {
+                                        std::cout << "Graph has too many sets (>8), the number of target partitions changed or the architecture is invalid.";
+                                        std::exit(1);
+                                }
+                        } else {
+                                if (kWay > 3 || _options.getTargetPartitions() <  oldTargetPartitions) {
+                                        std::cout << "Graph has too many sets (>8) or the number of target partitions changed.";
+                                        std::exit(1);
+                                } 
+                        }
+                }
+
+                interface_wrap(numVertices,                             /* number of vertices */
+                               starts, adjacency, vweights, eweights,   /* graph definition for chaco */
+                               NULL, NULL, NULL,                        /* x y z positions for the inertial method, not needed for multi-level KL */
+                               NULL, NULL,                              /* output assigment name and file, isn't needed because internal methods of PartClusManager are used instead */
+                               assigment,                               /* vertex assigment vector. Contains the set that each vector is present on.*/
+                               architecture, hypercubeDims, mesh_dims,  /* architecture, architecture topology and the hypercube dimensions (number of 2-way divisions) */
+                               NULL,                                    /* desired set sizes for each set, computed automatically, so it isn't needed */
+                               partitioningMethod, 1,                   /* constants that define the methods used by the partitioner -> multi-level KL, KL refinement */
+                               0, numVertCoar, kWay,                    /* disables the eigensolver, number of vertices to coarsen down to and bisection/quadrisection/octasection */
+                               0.001, seed,                             /* tolerance on eigenvectors (hard-coded, not used) and the seed */
+                               termPropagation, inbalance,              /* terminal propagation enable and inbalance */
+                               coarRatio, cutCost,                      /* coarsening ratio and cut to hop cost */
+                               0, refinement, level);                   /* debug text enable, refinement and clustering level to export*/
+
+                std::vector<short> chacoResult;
+                
+                int* clusteringResults = clustering_wrap();
+                for (int i = 0; i < numVertices; i++) {
+                        int* currentpointer = (clusteringResults + 1) + i;
+                        chacoResult.push_back(*currentpointer);
+                }
+                free(clusteringResults);
+
+                auto end = std::chrono::system_clock::now();
+                unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+                currentResults.addAssignment(chacoResult, runtime, seed);
+                free(assigment);
+
+                std::cout << "Clustered graph in " << runtime << " ms.\n";
+        }
+
+        _clusResults.push_back(currentResults);
+        
+        free(mesh_dims);
+
+        std::cout << "Chaco run completed. Cluster ID = " << clusterId << ".\n";
+}
+
+void PartClusManagerKernel::runGpMetisClustering() {
+	
+}
+
+void PartClusManagerKernel::runMlPartClustering() {        
+
+}
+
+unsigned PartClusManagerKernel::generateClusterId(){
+        unsigned sizeOfResults = _clusResults.size();
+        return sizeOfResults;
+}
+
+// Write Clustering To DB
+
+void PartClusManagerKernel::writeClusteringToDb(unsigned clusteringId) {
+        std::cout << "[INFO] Writing cluster id's to DB.\n";
+        if (clusteringId >= getNumClusteringResults()) {
+                std::cout << "[ERROR] Cluster id out of range ("
+                          << clusteringId << ").\n";
+                return;
+        }
+
+        PartSolutions &results = getClusteringResult(clusteringId);
+        const std::vector<short>& result = results.getAssignment(0); //Clustering uses only 1 seed
+
+        odb::dbBlock* block = getDbBlock();
+        for (odb::dbInst* inst: block->getInsts()) {
+                std::string instName = inst->getName();
+                int instIdx = _graph.getMapping(instName);
+                short clusterId = result[instIdx];
+                
+                odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "cluster_id");
+                if (!propId) {
+                        propId = odb::dbIntProperty::create(inst, "cluster_id", clusterId);
+                } else {
+                        propId->setValue(clusterId);
+                }
+        }
+
+        std::cout << "[INFO] Writing done.\n";
+}
+
+void PartClusManagerKernel::dumpClusIdToFile(std::string name) {
+        std::ofstream file(name);
+
+        odb::dbBlock* block = getDbBlock();
+        for (odb::dbInst* inst: block->getInsts()) {
+                std::string instName = inst->getName();
+                odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "cluster_id");
                 if (!propId) {
                         std::cout << "[ERROR] Property not found for inst " << instName << "\n";
                         continue;

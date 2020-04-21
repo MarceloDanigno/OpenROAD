@@ -53,6 +53,7 @@ int       give_up;		/* has coarsening bogged down? */
     extern double KL_IMBALANCE;	/* fractional imbalance allowed in KL */
     extern int MAPPING_TYPE;	/* how to get from eigenvectors to partition */
 	extern struct coarlist CLUSTERING_RESULTS;
+	extern int CLUSTERING_EXPORT;
     struct connect_data *cdata;	/* data structure for enforcing connectivity */
     struct vtx_data **cgraph;	/* array of vtx data for coarsened graph */
     double   *yvecs[MAXDIMS + 1];	/* eigenvectors for subgraph */
@@ -319,12 +320,52 @@ simple_part(graph, nvtxs, assignment, nsets, 1, real_goal);
     else
 	cvwgt_max = 1;
 
+	if (step == CLUSTERING_EXPORT) {
+
+		printf("Chaco: Saving clustering for step %d \n", step);
+		
+		static struct coarlist *clusresults = &CLUSTERING_RESULTS;
+
+		struct coarlist currentstruct;
+		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
+
+		for (int i = 0; i < (nvtxs + 1); i++) {
+				int* currentpointer = v2cv + i;
+				int* to_update = currentstruct.vec + i;
+				*to_update = *currentpointer;
+				/*printf("Index %d set to cluster %d \n", i, *currentpointer);*/
+		}
+
+		if (clusresults->vec != 0) {
+			free(clusresults->vec);
+		}
+		*clusresults = currentstruct;
+	}
+
     cassignment = (short *) smalloc((unsigned) (cnvtxs + 1) * sizeof(short));
     nextstep = step + 1;
     coarsen_kl(cgraph, cnvtxs, cnedges, COARSEN_VWGTS, COARSEN_EWGTS, cterm_wgts,
 	       igeom, ccoords, cvwgt_max, cassignment, goal, architecture, hops,
 	       solver_flag, ndims, nsets, vmax, mediantype, mkconnected,
 	       eigtol, nstep, nextstep, &cbndy_list, weights, give_up);
+
+	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
+	if (clusresults->vec == 0) {
+
+		printf("Chaco: Unable to save clustering results for the supplied level. Using step %d instead \n", nextstep);
+
+		struct coarlist currentstruct;
+		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
+
+		for (int i = 0; i < (nvtxs + 1); i++) {
+				int* currentpointer = v2cv + i;
+				int* to_update = currentstruct.vec + i;
+				*to_update = *currentpointer;
+				/*printf("Index %d set to cluster %d \n", i, *currentpointer);*/
+		}
+
+		*clusresults = currentstruct;
+	}
 
     /* Interpolate assignment back to fine graph. */
     for (i = 1; i <= nvtxs; i++)
@@ -379,23 +420,6 @@ simple_part(graph, nvtxs, assignment, nsets, 1, real_goal);
     if (cterm_wgts[1] != NULL)
 	sfree((char *) cterm_wgts[1]);
     free_graph(cgraph);
-
-	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
-
-	struct coarlist currentstruct;
-	currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
-
-	for (int i = 0; i < (nvtxs + 1); i++) {
-			int* currentpointer = v2cv + i;
-			int* to_update = currentstruct.vec + i;
-			*to_update = *currentpointer;
-			/*printf("Index %d set to cluster %d \n", i, *currentpointer);*/
-	}
-
-	if (clusresults->vec != 0) {
-		free(clusresults->vec);
-	}
-	*clusresults = currentstruct;
 	sfree((char *) v2cv);
 
     /* Smooth using KL every nstep steps. */

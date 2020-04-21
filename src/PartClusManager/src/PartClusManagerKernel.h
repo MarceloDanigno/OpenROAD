@@ -91,6 +91,8 @@ public:
         const std::vector<int>& getPartitionsToTest() const { return _partitionsToTest; } 
         void setEvaluationFunction(const std::string& function) { _evaluationFunction = function; }
         std::string getEvaluationFunction() const { return _evaluationFunction; } 
+        void setLevel(unsigned level) { _level = level; }
+        unsigned getLevel() const { return _level; } 
 
 private:
         unsigned                _numStarts              = 1;
@@ -109,6 +111,7 @@ private:
         unsigned                _maxVertexWeight        = 100; 
         unsigned                _balanceConstraint      = 2; 
         unsigned                _refinement             = 0;
+        unsigned                _level                  = 1;
         int                     _existingId             = -1;
         std::vector<int>        _archTopology;
         std::vector<int>        _seeds;
@@ -134,6 +137,8 @@ public:
         std::string getToolName() const { return _toolName; }
         void setPartitionId(unsigned id) { _partitionId = id; }
         unsigned getPartitionId() const { return _partitionId; }
+        void setClusterId(unsigned id) { _clusterId = id; }
+        unsigned getClusterId() const { return _clusterId; }
         void setBestSolutionIdx(unsigned idx) { _bestSolutionIdx = idx; }
         unsigned getBestSolutionIdx() const { return _bestSolutionIdx; }
         void setNumOfRuns(unsigned runs) { _numOfRuns = runs; }
@@ -157,6 +162,7 @@ private:
         std::vector<int>                _seeds;
         std::string                     _toolName               = "";
         unsigned                        _partitionId            = 0;
+        unsigned                        _clusterId              = 0;
         unsigned                        _bestSolutionIdx        = 0;
         unsigned                        _numOfRuns              = 0;
         double                          _bestSetSizeSD          = 0;
@@ -172,7 +178,9 @@ class PartClusManagerKernel {
 protected:
         odb::dbBlock* getDbBlock() const;
         unsigned getNumPartitioningResults() const { return _results.size(); }
+        unsigned getNumClusteringResults() const { return _clusResults.size(); }
         PartSolutions& getPartitioningResult(unsigned id) { return _results[id]; }
+        PartSolutions& getClusteringResult(unsigned id) { return _clusResults[id]; }
 
         PartOptions _options;
 	unsigned _dbId;
@@ -180,27 +188,36 @@ protected:
 	Graph _graph;
         Graph _hypergraph;
         std::vector<PartSolutions> _results;
+        std::vector<PartSolutions> _clusResults;
 
 public:
         PartClusManagerKernel() = default;
         void runPartitioning();
+        void runClustering();
         void evaluatePartitioning();
         unsigned getCurrentBestId() { return _bestId; }
         unsigned setCurrentBestId(unsigned id) { _bestId = id; }
         void runChaco();
         void runGpMetis();
         void runMlPart();
+        void runChacoClustering();
+        void runGpMetisClustering();
+        void runMlPartClustering();
         PartOptions& getOptions() { return _options; }
         unsigned getCurrentId() { return (_results.size() - 1); }
+        unsigned getCurrentClusId() { return (_clusResults.size() - 1); }
 	void setDbId(unsigned id) {_dbId = id;}
 	void graph();
         void hypergraph();
         unsigned generatePartitionId();
+        unsigned generateClusterId();
         void computePartitionResult(unsigned partitionId, std::string function);
         bool comparePartitionings(const PartSolutions oldPartition, const PartSolutions newPartition, std::string function);
         void reportPartitionResult(unsigned partitionId);
         void writePartitioningToDb(unsigned partitionId);
         void dumpPartIdToFile(std::string name);
+        void writeClusteringToDb(unsigned clusteringId);
+        void dumpClusIdToFile(std::string name);
 };
 
 }
