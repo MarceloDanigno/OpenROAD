@@ -72,10 +72,12 @@ public:
                         return false;
         }
 
-        void clearHypergraph() {_colIdx.clear();
-                           _rowPtr.clear();
-			   _edgeWeightsNormalized.clear();
-			   _edgeWeights.clear();}
+        void clearHypergraph() {_edgeWeightsNormalized.clear();
+								_edgeWeights.clear();
+								_vertexWeightsNormalized.clear();
+								_colIdx.clear();
+								_rowPtr.clear();
+								_instToIdx.clear();}
 
 
 	void computeWeightRange(int maxEdgeWeight, int maxVertexWeight);
