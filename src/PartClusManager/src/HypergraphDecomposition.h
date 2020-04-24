@@ -35,7 +35,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 ////////////////////////////////////////////////////////////////////////////////
 #include <stdint.h>
-#include "GraphDecomposition.h"
+#include "Hypergraph.h"
 #include <math.h>
 #include <iostream>
 
@@ -48,16 +48,38 @@ class dbNet;
 
 namespace PartClusManager {
 
+enum GraphType : uint8_t {
+        CLIQUE,
+        HYBRID,
+        HYBRID_OLD,
+        STAR,
+        STAR_OLD
+};
+
+
+
 class HypergraphDecomposition {
 public:
 	HypergraphDecomposition() {}
 	void init(int dbId);
-	void constructMap(Graph & graph, unsigned maxVertexWeight);
-	void createHypergraph(Graph &graph, std::vector<short> clusters, short currentCluster);
+	void constructMap(Hypergraph & hypergraph, unsigned maxVertexWeight);
+	void createHypergraph(Hypergraph & hypergraph, std::vector<short> clusters, short currentCluster);
+        void toGraph(Hypergraph & hypergraph, Graph & graph, std::string graphModelS, unsigned weightingOption,
+                                unsigned maxEdgeWeight, unsigned threshold);
 private:
 	odb::dbBlock* _block;
 	odb::dbDatabase *_db;
 	odb::dbChip *_chip;
+
+        int _weightingOption;
+        std::vector<std::map<int,float>> adjMatrix;
+        GraphType resolveModel(std::string graphModel);
+        void createCliqueGraph(Graph &graph, std::vector<int> net);
+        void createStarGraph(Graph & graph, std::vector<int> net);
+        void connectPins(int firstPin, int secondPin, float weight);
+        void connectStarPins(int firstPin, int secondPin, float weight);
+        float computeWeight(int nPins);
+        void createCompressedMatrix(Graph &graph);
 
 };
 

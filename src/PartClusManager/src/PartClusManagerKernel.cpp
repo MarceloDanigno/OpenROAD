@@ -51,8 +51,7 @@ namespace PartClusManager {
 // Partition Netlist
 
 void PartClusManagerKernel::runPartitioning() {
-        hypergraph();
-        graph();
+	hypergraph();
         if (_options.getTool() == "mlpart") {
                 runMlPart();
         } else if (_options.getTool() == "gpmetis") {
@@ -355,9 +354,9 @@ void PartClusManagerKernel::runGpMetis() {
 
 void PartClusManagerKernel::runMlPart() {        
         std::cout << "Running MLPart...\n";
-
-        HypergraphDecomposition hypergraphDecomp;
+	HypergraphDecomposition hypergraphDecomp;
 	hypergraphDecomp.init(_dbId);
+	Hypergraph hypergraph = _hypergraph;
 
         PartSolutions currentResults;
         currentResults.setToolName(_options.getTool());
@@ -366,7 +365,7 @@ void PartClusManagerKernel::runMlPart() {
         currentResults.setNumOfRuns(_options.getSeeds().size());
         std::string evaluationFunction = _options.getEvaluationFunction();
 
-	int numVertices = _hypergraph.getNumVertex();
+	int numVertices = hypergraph.getNumVertex();
 	std::vector<short> clusters(numVertices, 0);
 	double tolerance =  _options.getBalanceConstraint() / 100.0;
 	double balanceArray[2] = {0.5,0.5};
@@ -382,10 +381,10 @@ void PartClusManagerKernel::runMlPart() {
 			std::vector<short> auxPartitions;
 			for (int p : partitions){
 				countPartitions++;
-				hypergraphDecomp.createHypergraph(_hypergraph, clusters, p);
-				int numEdges = _hypergraph.getNumEdges();
-				int numColIdx = _hypergraph.getNumColIdx();
-				numVertices = _hypergraph.getNumVertex();
+				hypergraphDecomp.createHypergraph(hypergraph, clusters, p);
+				int numEdges = hypergraph.getNumEdges();
+				int numColIdx = hypergraph.getNumColIdx();
+				numVertices = hypergraph.getNumVertex();
 
 				double * vertexWeights = (double*) malloc((unsigned) numVertices * sizeof(double));
 				int * rowPtr = (int*) malloc((unsigned) (numEdges+ 1) * sizeof(int));
@@ -396,16 +395,16 @@ void PartClusManagerKernel::runMlPart() {
 				for (int j=0; j< numVertices; j++) part[j] = -1;
 
 				for (int i=0; i < numVertices; i++){
-					vertexWeights[i] = _hypergraph.getVertexWeight(i) / _options.getMaxVertexWeight();
+					vertexWeights[i] = hypergraph.getVertexWeight(i) / _options.getMaxVertexWeight();
 				}
 				for (int i=0; i < numColIdx; i++){
-					colIdx[i] = _hypergraph.getColIdx(i);
+					colIdx[i] = hypergraph.getColIdx(i);
 				}
 				for (int i = 0; i < numEdges; i++){
-					rowPtr[i] = _hypergraph.getRowPtr(i);
-					edgeWeights[i] = _hypergraph.getEdgeWeight(i);
+					rowPtr[i] = hypergraph.getRowPtr(i);
+					edgeWeights[i] = hypergraph.getEdgeWeight(i);
 				}
-				rowPtr[numEdges] = _hypergraph.getRowPtr(numEdges);
+				rowPtr[numEdges] = hypergraph.getRowPtr(numEdges);
 				UMpack_mlpart(numVertices,  
 						numEdges, 
 						vertexWeights, 
@@ -437,7 +436,7 @@ void PartClusManagerKernel::runMlPart() {
 				free(edgeWeights);
 				free(part);
 
-				_hypergraph.clearHypergraph();
+				hypergraph.clearHypergraph();
 				auxPartitions.push_back(countPartitions);
 			}
 
@@ -457,23 +456,25 @@ void PartClusManagerKernel::runMlPart() {
         std::cout << "MLPart run completed. Partition ID = " << partitionId << ".\n";
 }
 
-void PartClusManagerKernel::graph(){
-        _graph.clearGraph();
-	GraphDecomposition graphDecomp;
-	graphDecomp.init(_dbId);
-	graphDecomp.createGraph(_graph, _options.getGraphModel(), _options.getWeightModel(), _options.getMaxEdgeWeight(), 
-					_options.getMaxVertexWeight(), _options.getCliqueThreshold());
-	
-}
 
 void PartClusManagerKernel::hypergraph(){
-        _hypergraph.clearGraph();
 	HypergraphDecomposition hypergraphDecomp;
 	hypergraphDecomp.init(_dbId);
 	hypergraphDecomp.constructMap(_hypergraph, _options.getMaxVertexWeight());
-        int numVertices = _hypergraph.getNumVertex();
-        std::vector<short> clusters(numVertices, 0);
-        hypergraphDecomp.createHypergraph(_hypergraph, clusters, 0);
+	int numVertices = _hypergraph.getNumVertex();
+	std::vector<short> clusters(numVertices, 0);
+	hypergraphDecomp.createHypergraph(_hypergraph, clusters, 0);
+	toGraph();
+}
+
+void PartClusManagerKernel::toGraph(){
+	HypergraphDecomposition hypergraphDecomp;
+	hypergraphDecomp.init(_dbId);
+        _graph.clearGraph();
+	hypergraphDecomp.toGraph(_hypergraph, _graph, _options.getGraphModel(), 
+					_options.getWeightModel(), _options.getMaxEdgeWeight(),
+                                        		 _options.getCliqueThreshold());
+	
 }
 
 unsigned PartClusManagerKernel::generatePartitionId(){
@@ -562,11 +563,13 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
                                 netVertices.pop_back();
                                 int currentRow = _graph.getRowPtr(currentVertex); // Gets the index of the adjacency list based on the CRS format.
                                 unsigned vertexEnd = 0;
+
                                 if (_graph.getRowPtr().size() == (currentVertex + 1)){ // Error handling when using the last vertex on the list.
                                         vertexEnd = _graph.getColIdx().size();
                                 } else {
                                         vertexEnd = _graph.getRowPtr(currentVertex + 1);
                                 }
+
                                 while (currentRow < vertexEnd){ // Iterate through each edge update the total edge weight. (hop weight, the hyperedge weight.)
                                         unsigned currentConnection = _graph.getColIdx(currentRow);
                                         if (std::find(netVertices.begin(), netVertices.end(), currentConnection) != netVertices.end()) {
@@ -721,7 +724,6 @@ void PartClusManagerKernel::dumpPartIdToFile(std::string name) {
 
 void PartClusManagerKernel::runClustering() {
         hypergraph();
-        graph();
         if (_options.getTool() == "mlpart") {
                 runMlPartClustering();
         } else if (_options.getTool() == "gpmetis") {

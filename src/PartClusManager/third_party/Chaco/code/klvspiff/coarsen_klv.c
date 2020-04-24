@@ -426,6 +426,24 @@ int       give_up;		/* has coarsening bogged down? */
     if (cterm_wgts[1] != NULL)
 	sfree((char *) cterm_wgts[1]);
     free_graph(cgraph);
+    
+	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
+
+	struct coarlist currentstruct;
+	currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
+
+	int v2cv_counter = 0;
+	for (v2cv_counter = 0; v2cv_counter < (nvtxs + 1); v2cv_counter++) {
+			int* currentpointer = v2cv + v2cv_counter;
+			int* to_update = currentstruct.vec + v2cv_counter;
+			*to_update = *currentpointer;
+			/*printf("Index %d set to cluster %d \n", v2cv_counter, *currentpointer);*/
+	}
+
+	if (clusresults->vec != 0) {
+		free(clusresults->vec);
+	}
+	*clusresults = currentstruct;
 	sfree((char *) v2cv);
 
     /* Smooth using KL or BPM every nstep steps. */

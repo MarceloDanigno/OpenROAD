@@ -103,7 +103,7 @@ private:
         bool                    _termProp               = false;
         double                  _cutHopRatio            = 1.0;
         std::string             _tool                   = "chaco";
-        std::string             _graphModel             = "clique";
+        std::string             _graphModel             = "star";
         std::string             _evaluationFunction     = "hyperedges";
         unsigned                _cliqueThreshold        = 50;
         unsigned                _weightModel            = 1;
@@ -186,7 +186,7 @@ protected:
 	unsigned _dbId;
         unsigned _bestId;
 	Graph _graph;
-        Graph _hypergraph;
+	Hypergraph _hypergraph;
         std::vector<PartSolutions> _results;
         std::vector<PartSolutions> _clusResults;
 
@@ -207,8 +207,8 @@ public:
         unsigned getCurrentId() { return (_results.size() - 1); }
         unsigned getCurrentClusId() { return (_clusResults.size() - 1); }
 	void setDbId(unsigned id) {_dbId = id;}
-	void graph();
-        void hypergraph();
+	void toGraph();
+	void hypergraph();
         unsigned generatePartitionId();
         unsigned generateClusterId();
         void computePartitionResult(unsigned partitionId, std::string function);

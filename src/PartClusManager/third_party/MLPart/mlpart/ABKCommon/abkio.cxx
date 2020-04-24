@@ -47,6 +47,7 @@
 #include <iomanip>
 #include <ctype.h>
 #include <stdio.h>
+#include <strings.h>
 #include "abkstring.h"
 #include "abkassert.h"
 #include "abkio.h"
