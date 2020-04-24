@@ -83,6 +83,95 @@ void PartClusManagerKernel::runChaco() {
 	std::vector<int> colIdx = _graph.getColIdx();
 	std::vector<int> rowPtr = _graph.getRowPtr();
         int numVertices = vertexWeights.size();
+        int numVerticesTotal = vertexWeights.size();
+        int repartition = _options.getRepartitionCluster();
+        std::map<int,int> mappingRepartition;
+        short highestCurrentPartition = 0;
+        std::cout << colIdx.size() << ".\n";
+        if (_options.getExistingID() > -1 && repartition > -1) {
+                //If a previous solution ID already exists...
+                PartSolutions existingResult = _results[_options.getExistingID()];
+                unsigned existingBestIdx = existingResult.getBestSolutionIdx();
+                const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
+                std::vector<long int> vertexMapping (numVerticesTotal, 0); //Maps vertices from the full graph to the cut graph. vertexMapping[fullGraphIdx] = cutGraphIdx.
+                //Gets the vertex assignments results from the last ID.
+                for (long int currentVertex = vertexResult.size() - 1; currentVertex >= 0; currentVertex = currentVertex - 1) {
+                        short existingPartId = vertexResult[currentVertex];
+                        vertexMapping[currentVertex] = currentVertex;
+                        if (existingPartId > highestCurrentPartition) {
+                                highestCurrentPartition = existingPartId;
+                        }
+                        if (existingPartId != repartition) { //If the current vertex is not in a set that has to be repartitioned, remove it from the CRS.
+                                vertexWeights.erase(vertexWeights.begin() + currentVertex); //Remove from the vertex weights. No problems since we iterate the vertices from last to first.
+                                vertexMapping[currentVertex] = -1;
+                                for (long int currentIndex = (currentVertex + 1) ; currentIndex < vertexMapping.size(); currentIndex++) {
+                                        vertexMapping[currentIndex] = vertexMapping[currentIndex] - 1;
+                                }
+                                int currentRowPtr = rowPtr[currentVertex]; //Gets the beginning of the adjancency vector
+                                if (currentVertex >= (rowPtr.size() - 1)){ //If we're at the end of the vector, just remove everything up until the end.
+                                        //std::cout << "End of colIdx..." << currentVertex << "," << rowPtr.size() << ".\n";
+                                        int endRowPtr = colIdx.size() - 1;
+                                        int removedInterval = (endRowPtr - currentRowPtr) + 1;
+                                        colIdx.erase(colIdx.begin() + currentRowPtr, colIdx.begin() + endRowPtr);
+                                        edgeWeights.erase(edgeWeights.begin() + currentRowPtr, edgeWeights.begin() + endRowPtr);
+                                        for (long int currentRowPtrIndex = currentVertex ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) {
+                                                rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedInterval;
+                                        }
+                                } else { //If not, decrement every adjancency index (from rowPtr) after the current one and remove the segment from the adjancency vector.
+                                        int endRowPtr = rowPtr[currentVertex + 1] - 1;
+                                        //std::cout << "rowprt manipulation4 " <<currentRowPtr << " " << endRowPtr << " " << colIdx.size() << ".\n";
+                                        int removedInterval = (endRowPtr - currentRowPtr) + 1;
+                                        colIdx.erase(colIdx.begin() + currentRowPtr, colIdx.begin() + endRowPtr);
+                                        edgeWeights.erase(edgeWeights.begin() + currentRowPtr, edgeWeights.begin() + endRowPtr);
+                                        for (long int currentRowPtrIndex = currentVertex ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) {
+                                                rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedInterval;
+                                        }
+                                }
+                                rowPtr.erase(rowPtr.begin() + currentVertex); //After the manipulations were done, we can remove the adjancency index.
+                        }
+                }
+                std::map<long int,long int> reverseVertexMapping; //Maps vertices from the cut graph to vertices to the full graph. reverseVertexMapping[cutGraphIdx] = fullGraphIdx;
+                for (long int currentVertex = 0; currentVertex < vertexMapping.size(); currentVertex++) {
+                        long int currentMapping = vertexMapping[currentVertex];
+                        if (currentMapping > -1) {
+                                reverseVertexMapping[currentMapping] = currentVertex;
+                        }
+                }
+                for (long int currentRowPtrIdx = (rowPtr.size() - 1); currentRowPtrIdx >= 0 ; currentRowPtrIdx = currentRowPtrIdx - 1) { //Iterate over rowPtr, in order to remove the leftover vertices from colIdx
+                        long int colEnd = 0; //Gets the end of the adjancency
+                        if (currentRowPtrIdx == (rowPtr.size() - 1)) {
+                                colEnd = colIdx.size() - 1;
+                        } else {
+                                colEnd = rowPtr[currentRowPtrIdx + 1] - 1;
+                        }
+                        long int colStart = rowPtr[currentRowPtrIdx]; //Gets the start of the adjancency
+                        long int colSize = colEnd - colStart; //Gets the number of vertices for that specific vertex
+                        unsigned removedVerticesNum = 0;
+                        for (long int currentColIdx = colEnd; currentColIdx >= colStart; currentColIdx = currentColIdx - 1) { //For each vertex the current vertex is adjancent to...
+                                //std::cout << "Getting the vertex...\n";
+                                long int currentVertex = colIdx[currentColIdx]; //Get the adjancent vertex.
+                                colIdx[currentColIdx] = vertexMapping[currentVertex];
+                                if (vertexMapping[currentVertex] < 0) { //If it is one of the removed vertices...
+                                        removedVerticesNum = removedVerticesNum + 1; //Increment the number of removed vertices by 1.
+                                        colIdx.erase(colIdx.begin() + currentColIdx); //Remove it from the colIdx.
+                                        edgeWeights.erase(edgeWeights.begin() + currentColIdx);
+                                        //std::cout << "Poof!\n";
+                                }
+                        }
+                        if (removedVerticesNum > 0) { //If at least one vertex was removed from colIdx
+                                for (long int currentRowPtrIndex = (currentRowPtrIdx + 1) ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) { //We have to update the rowPtr to respect those changes.
+                                        rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedVerticesNum;
+                                }
+                                /*
+                                if (removedVerticesNum == colSize) { //And if all vertices were removed, we can remove that vertex
+                                        rowPtr.erase(rowPtr.begin() + (currentRowPtrIdx));
+                                        vertexWeights.erase(vertexWeights.begin() + currentRowPtrIdx);
+                                }
+                                */
+                        }
+                }
+                numVertices = vertexWeights.size();
+        }
         
         int architecture = _options.getArchTopology().size();
         int architectureDims = 1;
@@ -152,11 +241,11 @@ void PartClusManagerKernel::runChaco() {
                         currentIndexFloat++;
                 }
 
-                short* assigment = (short*) malloc((unsigned) numVertices * sizeof(short));
+                short* assigment = (short*) malloc((unsigned) numVerticesTotal * sizeof(short));
 
                 int oldTargetPartitions = 0;
 
-                if (_options.getExistingID() > -1) {
+                if (_options.getExistingID() > -1 && repartition < 0) {
                         //If a previous solution ID already exists...
                         PartSolutions existingResult = _results[_options.getExistingID()];
                         unsigned existingBestIdx = existingResult.getBestSolutionIdx();
@@ -207,9 +296,31 @@ void PartClusManagerKernel::runChaco() {
 
                 std::vector<short> chacoResult;
                 
-                for (int i = 0; i < numVertices; i++) {
-                        short* currentpointer = assigment + i;
-                        chacoResult.push_back(*currentpointer);
+                if (repartition > -1) {
+                        //If a previous solution ID already exists...
+                        PartSolutions existingResult = _results[_options.getExistingID()];
+                        unsigned existingBestIdx = existingResult.getBestSolutionIdx();
+                        const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
+                        int currentAssignmentIdx = 0;
+                        for (int i = 0; i < numVerticesTotal; i++) {
+                                short existingPartId = vertexResult[i];
+                                if (existingPartId != repartition) { 
+                                        chacoResult.push_back(existingPartId);
+                                } else {
+                                        short* currentpointer = assigment + currentAssignmentIdx;
+                                        if (*currentpointer == 0){
+                                                chacoResult.push_back(repartition);
+                                        } else {
+                                                chacoResult.push_back(((*currentpointer) + highestCurrentPartition));
+                                        }
+                                        currentAssignmentIdx++;
+                                }
+                        }
+                } else {
+                        for (int i = 0; i < numVertices; i++) {
+                                short* currentpointer = assigment + i;
+                                chacoResult.push_back(*currentpointer);
+                        }
                 }
                 
                 auto end = std::chrono::system_clock::now();
@@ -562,16 +673,14 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
                                 netVertices.pop_back();
                                 int currentRow = _graph.getRowPtr(currentVertex); // Gets the index of the adjacency list based on the CRS format.
                                 unsigned vertexEnd = 0;
-                                if (_graph.getRowPtr().size() == (currentVertex + 1)){ // Error handling when using the last vertex on the list.
+                                if (_graph.getRowPtr().size() >= (currentVertex + 1)){ // Error handling when using the last vertex on the list.
                                         vertexEnd = _graph.getColIdx().size();
                                 } else {
                                         vertexEnd = _graph.getRowPtr(currentVertex + 1);
                                 }
                                 while (currentRow < vertexEnd){ // Iterate through each edge update the total edge weight. (hop weight, the hyperedge weight.)
                                         unsigned currentConnection = _graph.getColIdx(currentRow);
-                                        if (std::find(netVertices.begin(), netVertices.end(), currentConnection) != netVertices.end()) {
-                                                edgeTotalWeigth = edgeTotalWeigth + _graph.getEdgeWeight(currentRow);
-                                        }
+                                        edgeTotalWeigth = edgeTotalWeigth + _graph.getEdgeWeight(currentRow);
                                         currentRow++;
                                 }
                         }
@@ -951,6 +1060,36 @@ void PartClusManagerKernel::dumpClusIdToFile(std::string name) {
         }
 
         file.close();
+}
+
+// Report Netlist Partitions
+
+void PartClusManagerKernel::reportNetlistPartitions(unsigned partitionId) {
+        std::map<short, unsigned long> setSizes;
+        std::set<short> partitions;
+        short numberOfPartitions = 0;
+        PartSolutions &results = getPartitioningResult(partitionId);
+        unsigned bestSolutionIdx = results.getBestSolutionIdx();
+        const std::vector<short>& result = results.getAssignment(bestSolutionIdx);
+        for(short currentPartition : result) {
+                if (currentPartition > numberOfPartitions) {
+                        numberOfPartitions = currentPartition;
+                }
+                if (setSizes.find(currentPartition) == setSizes.end()) {
+                        setSizes[currentPartition] = 1;
+                } else {
+                        setSizes[currentPartition] = setSizes[currentPartition] +1;
+                }
+                partitions.insert(currentPartition);
+        }
+        std::cout << "[REPORT NETLIST] \nThe netlist has " << numberOfPartitions << " partitions.\n\n";
+        unsigned long totalVertices = 0;
+        for (short partIdx : partitions){
+                unsigned long partSize = setSizes[partIdx];
+                std::cout << "Partition " << partIdx << " has " << partSize << " vertices.\n";
+                totalVertices = totalVertices + partSize;
+        }
+        std::cout << "\nThe total number of vertices is " << totalVertices << ".\n[REPORT NETLIST END]\n";
 }
 
 }

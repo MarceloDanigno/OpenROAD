@@ -320,7 +320,7 @@ simple_part(graph, nvtxs, assignment, nsets, 1, real_goal);
     else
 	cvwgt_max = 1;
 
-	if (step == CLUSTERING_EXPORT) {
+	if (step == CLUSTERING_EXPORT && CLUSTERING_EXPORT > -1) {
 
 		printf("Chaco: Saving clustering for step %d \n", step);
 		
@@ -350,7 +350,7 @@ simple_part(graph, nvtxs, assignment, nsets, 1, real_goal);
 	       eigtol, nstep, nextstep, &cbndy_list, weights, give_up);
 
 	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
-	if (clusresults->vec == 0) {
+	if (clusresults->vec == 0 && CLUSTERING_EXPORT > -1) {
 
 		printf("Chaco: Unable to save clustering results for the supplied level. Using step %d instead \n", nextstep);
 

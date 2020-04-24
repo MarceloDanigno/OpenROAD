@@ -87,6 +87,8 @@ public:
         const std::vector<int>& getSeeds() const { return _seeds; } 
         void setExistingID(int id) { _existingId = id; }
         int getExistingID() const { return _existingId; }
+        void setRepartitionCluster(int cluster) { _repartition = cluster; }
+        int getRepartitionCluster() const { return _repartition; }
         void setPartitionsToTest(const std::vector<int>& partIds) { _partitionsToTest = partIds; }
         const std::vector<int>& getPartitionsToTest() const { return _partitionsToTest; } 
         void setEvaluationFunction(const std::string& function) { _evaluationFunction = function; }
@@ -111,8 +113,9 @@ private:
         unsigned                _maxVertexWeight        = 100; 
         unsigned                _balanceConstraint      = 2; 
         unsigned                _refinement             = 0;
-        unsigned                _level                  = 1;
+        int                     _level                  = -1;
         int                     _existingId             = -1;
+        int                     _repartition            = -1;
         std::vector<int>        _archTopology;
         std::vector<int>        _seeds;
         std::vector<int>        _partitionsToTest;
@@ -218,6 +221,7 @@ public:
         void dumpPartIdToFile(std::string name);
         void writeClusteringToDb(unsigned clusteringId);
         void dumpClusIdToFile(std::string name);
+        void reportNetlistPartitions(unsigned partitionId);
 };
 
 }

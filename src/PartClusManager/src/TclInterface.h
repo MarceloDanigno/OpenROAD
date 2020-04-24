@@ -53,6 +53,7 @@ void set_architecture(const char* topology);
 void set_refinement(unsigned value);
 void set_seeds(const char* seeds);
 void set_existing_id(int value);
+void set_repartiton_cluster(int value);
 void generate_seeds(unsigned value);
 void set_partition_ids_to_test(const char* ids);
 void set_evaluation_function(const char* function);
@@ -64,5 +65,6 @@ unsigned run_clustering();
 void set_level(unsigned value);
 void write_clustering_to_db(unsigned id);
 void dump_clus_id_to_file(const char* name); 
+void report_netlist_partitions(unsigned id);
 }
 

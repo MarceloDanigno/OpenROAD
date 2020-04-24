@@ -56,6 +56,7 @@ sta::define_cmd_args "partition_netlist" { [-tool name] \
                                            [-refinement value] \
                                            [-seeds value] \
                                            [-partition_id value] \
+                                           [-repartition value] \
                                          }
 proc partition_netlist { args } {
   sta::parse_key_args "partition_netlist" args \
@@ -76,6 +77,7 @@ proc partition_netlist { args } {
           -refinement \
           -seeds \
           -partition_id \
+          -repartition \
          } flags {}
 
   # Tool
@@ -238,6 +240,9 @@ proc partition_netlist { args } {
   # Partition Id (for exisisting partitions)
   if { [info exists keys(-partition_id)] } {
         PartClusManager::set_existing_id $keys(-partition_id)
+        if { [info exists keys(-repartition)] } {
+              PartClusManager::set_repartiton_cluster $keys(-repartition)
+        }
   }
 
   set currentId [PartClusManager::run_partitioning]
@@ -358,6 +363,8 @@ proc cluster_netlist { args } {
   # Levels
   if { [info exists keys(-level)] } {
         PartClusManager::set_level $keys(-level)
+  } else {
+        PartClusManager::set_level 1
   }
 
   PartClusManager::generate_seeds 1
@@ -394,4 +401,27 @@ proc write_clustering_to_db { args } {
   if { [info exists keys(-dump_to_file)] } {
     PartClusManager::dump_clus_id_to_file $keys(-dump_to_file)
   } 
+}
+
+#--------------------------------------------------------------------
+# Report netlist partitions command
+#--------------------------------------------------------------------
+
+sta::define_cmd_args "report_netlist_partitions" { [-partitioning_id id] \
+                                                 }
+
+proc report_netlist_partitions { args } {
+  sta::parse_key_args "report_netlist_partitions" args \
+    keys { -partitioning_id \
+         } flags { }
+
+  set partitioning_id 0
+  if { ![info exists keys(-partitioning_id)] } {
+    puts "\[ERROR\] Missing mandatory argument -partitioning_id"
+    return
+  } else {
+    set partitioning_id $keys(-partitioning_id)
+  } 
+  
+  PartClusManager::report_netlist_partitions $partitioning_id
 }

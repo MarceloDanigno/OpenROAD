@@ -58,6 +58,7 @@ extern void set_architecture(const char* topology);
 extern void set_refinement(unsigned value);
 extern void set_seeds(const char* seeds);
 extern void set_existing_id(int value);
+extern void set_repartiton_cluster(int value);
 extern void generate_seeds(unsigned value);
 extern void set_partition_ids_to_test(const char* seeds);
 extern void set_evaluation_function(const char* function);
@@ -69,4 +70,5 @@ extern unsigned run_clustering();
 extern void set_level(unsigned value);
 extern void write_clustering_to_db(unsigned id);
 extern void dump_clus_id_to_file(const char* name); 
+extern void report_netlist_partitions(unsigned id);
 }

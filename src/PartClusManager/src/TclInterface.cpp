@@ -160,6 +160,12 @@ void set_existing_id(int value) {
         kernel->getOptions().setExistingID(value);
 }
 
+void set_repartiton_cluster(int value) {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->getOptions().setRepartitionCluster(value);
+}
+
 void generate_seeds(unsigned value) {
         ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
         PartClusManagerKernel* kernel = openroad->getPartClusManager();
@@ -248,6 +254,12 @@ void dump_clus_id_to_file(const char* name) {
         ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
         PartClusManagerKernel* kernel = openroad->getPartClusManager();
         kernel->dumpClusIdToFile(name);
+}
+
+void report_netlist_partitions(unsigned id) {
+        ord::OpenRoad* openroad = ord::OpenRoad::openRoad();
+        PartClusManagerKernel* kernel = openroad->getPartClusManager();
+        kernel->reportNetlistPartitions(id);
 }
 
 } // end namespace
