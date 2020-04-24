@@ -570,7 +570,7 @@ void PartClusManagerKernel::runMlPart() {
 
 
 void PartClusManagerKernel::hypergraph(){
-        _hypergraph.clearHypergraph();
+        _hypergraph.fullClearHypergraph();
 	HypergraphDecomposition hypergraphDecomp;
 	hypergraphDecomp.init(_dbId);
 	hypergraphDecomp.constructMap(_hypergraph, _options.getMaxVertexWeight());
