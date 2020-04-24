@@ -43,14 +43,15 @@
 
 namespace PartClusManager {
 
-class Graph {
+class Hypergraph {
 public:
-        Graph() {}
+        Hypergraph() {}
 	int getEdgeWeight (int idx) const { return _edgeWeightsNormalized[idx];}
 	int getVertexWeight(int idx) const { return _vertexWeightsNormalized[idx];}
 	int getColIdx(int idx) const {return _colIdx[idx];}
 	int getRowPtr(int idx) const {return _rowPtr[idx];}
 	int getMapping(std::string inst){return _instToIdx[inst];}
+	std::vector<float> getDefaultEdgeWeight() const { return _edgeWeights;};
 	std::vector<int> getEdgeWeight() const { return _edgeWeightsNormalized;};
 	std::vector<int> getVertexWeight() const { return _vertexWeightsNormalized;};
 	std::vector<int> getColIdx() const { return _colIdx;};
@@ -71,15 +72,11 @@ public:
                         return false;
         }
 
-        void clearGraph() {_edgeWeightsNormalized.clear();
-                           _vertexWeightsNormalized.clear();
-                           _colIdx.clear();
-                           _rowPtr.clear();
-                           _instToIdx.clear();}
-
         void clearHypergraph() {_colIdx.clear();
                            _rowPtr.clear();
-			   _edgeWeightsNormalized.clear();}
+			   _edgeWeightsNormalized.clear();
+			   _edgeWeights.clear();}
+
 
 	void computeWeightRange(int maxEdgeWeight, int maxVertexWeight);
 	void computeVertexWeightRange(int maxVertexWeight);
@@ -90,7 +87,7 @@ public:
 	int getNumVertex() const {return _vertexWeightsNormalized.size();}
 	int getNumColIdx() const {return  _colIdx.size();}
 	int getNumRowPtr() const {return  _rowPtr.size();}
-private:
+protected:
 	std::vector<float> _edgeWeights;
 	std::vector<int> _edgeWeightsNormalized;
 	std::vector<long long int> _vertexWeights;
@@ -98,6 +95,20 @@ private:
 	std::vector<int> _colIdx;
 	std::vector<int> _rowPtr;
 	std::map<std::string, int> _instToIdx;
+
+};
+
+class Graph : public Hypergraph{
+public:
+	Graph() {}
+        void clearGraph() {_edgeWeightsNormalized.clear();
+						   _edgeWeights.clear();
+                           _vertexWeightsNormalized.clear();
+                           _colIdx.clear();
+                           _rowPtr.clear();
+                           _instToIdx.clear();}
+	void assignVertexWeight(std::vector<int> vertex) {_vertexWeightsNormalized = vertex;}
+
 
 };
 

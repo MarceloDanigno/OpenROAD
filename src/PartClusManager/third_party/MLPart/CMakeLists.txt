@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 
 project(MLPart)
 set(LIB_NAME "MLPart")
+set (CMAKE_CXX_STANDARD 11)
 
 add_definitions(-DNOOA)
 add_definitions(-pg)

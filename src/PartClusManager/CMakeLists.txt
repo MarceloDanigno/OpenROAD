@@ -34,13 +34,11 @@ add_custom_command(OUTPUT ${PARTCLUSMANAGER_TCL_INIT}
 ###########################################################
 
 set(SRC_FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/Graph.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/GraphDecomposition.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Hypergraph.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/MakePartclusmanager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/PartClusManagerKernel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/HypergraphDecomposition.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/TclInterface.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/HypergraphDecomposition.cpp
    )
 
 ###########################################################

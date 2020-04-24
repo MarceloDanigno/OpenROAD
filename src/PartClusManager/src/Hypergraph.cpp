@@ -35,12 +35,12 @@
 // POSSIBILITY OF SUCH DAMAGE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph.h"
+#include "Hypergraph.h"
 #include <iostream>
 
 namespace PartClusManager {
 
-void Graph::computeEdgeWeightRange(int maxEdgeWeight){
+void Hypergraph::computeEdgeWeightRange(int maxEdgeWeight){
         std::vector<float> edgeWeight = _edgeWeights;
         double percentile = 0.99; //Exclude possible outliers
 
@@ -67,11 +67,11 @@ void Graph::computeEdgeWeightRange(int maxEdgeWeight){
 		_edgeWeightsNormalized.push_back(auxWeight);
         }
 
-	_edgeWeights.clear();
-	_edgeWeights.shrink_to_fit();
+	//_edgeWeights.clear();
+	//_edgeWeights.shrink_to_fit();
 }
 
-void Graph::computeVertexWeightRange(int maxVertexWeight){
+void Hypergraph::computeVertexWeightRange(int maxVertexWeight){
         std::vector<long long int> vertexWeight = _vertexWeights;
         double percentile = 0.99; //Exclude possible outliers
 
