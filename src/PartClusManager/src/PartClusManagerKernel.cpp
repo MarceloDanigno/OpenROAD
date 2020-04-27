@@ -286,6 +286,12 @@ void PartClusManagerKernel::runGpMetis() {
         currentResults.setNumOfRuns(_options.getSeeds().size());
         std::string evaluationFunction = _options.getEvaluationFunction();
 
+        PartSolutions bestResult;
+        bestResult.setToolName(_options.getTool());
+        bestResult.setPartitionId(partitionId);
+        bestResult.setNumOfRuns(1);
+        int firstRun = 0;
+
 	idx_t edgeCut;
 	idx_t nPartitions = _options.getTargetPartitions();
         int numVertices = _graph.getNumVertex();
@@ -343,16 +349,62 @@ void PartClusManagerKernel::runGpMetis() {
                 currentResults.addAssignment(gpmetisResults, runtime, seed);
 		free(parts);
 
-                std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
+                if (_options.getSeeds().size() > 19){
+                        if (firstRun <= 0){
+                                bestResult.addAssignment(gpmetisResults, runtime, seed);
+                                _results.push_back(bestResult);
+                                computePartitionResult(partitionId, evaluationFunction);
+                                bestResult = _results.back();
+                                currentResults.clearAssignments();
+                        } else {
+                                currentResults.setNumOfRuns(1);
+                                currentResults.setPartitionId(partitionId + 1);
+                                _results.push_back(currentResults);
+                                computePartitionResult((partitionId + 1), evaluationFunction);
+                                currentResults = _results.back();
+                                bool isNewIdBetter = comparePartitionings(bestResult,
+                                                                          currentResults,
+                                                                          evaluationFunction);
+                                if (isNewIdBetter){
+                                        _results.pop_back();
+                                        _results.pop_back();
+                                        bestResult.clearAssignments();
+                                        bestResult.addAssignment(gpmetisResults, runtime, seed);
+
+                                        bestResult.setBestSolutionIdx(0);
+                                        bestResult.setBestRuntime(runtime);
+                                        bestResult.setBestNumHyperedgeCuts(currentResults.getBestNumHyperedgeCuts());
+                                        bestResult.setBestNumTerminals(currentResults.getBestNumTerminals());
+                                        bestResult.setBestHopWeigth(currentResults.getBestHopWeigth());
+                                        bestResult.setBestSetSize(currentResults.getBestSetSize());
+                                        bestResult.setBestSetArea(currentResults.getBestSetArea());
+
+                                        _results.push_back(bestResult);
+                                        currentResults.clearAssignments();
+                                } else {
+                                        _results.pop_back();
+                                        currentResults.clearAssignments();
+                                }
+                        }
+                        firstRun = firstRun + 1;
+                        if (firstRun % 100 == 0){
+                                std::cout << "Partitioned graph for " << firstRun << " seeds.\n";
+                        }
+                } else {
+                        std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
+                }
         }
 	free(vertexWeights);
 	free(rowPtr);
 	free(colIdx);
 	free(edgeWeights);
-        _results.push_back(currentResults);
-        computePartitionResult(partitionId, evaluationFunction);
 
-        std::cout << "GPMetis run completed. Partition ID = " << partitionId << ".\n";
+        if (_options.getSeeds().size() <= 19){
+                _results.push_back(currentResults);
+                computePartitionResult(partitionId, evaluationFunction);
+        }
+
+        std::cout << "GPMetis run completed. Partition ID = " << partitionId << ". Total runs = " << _options.getSeeds().size() << ".\n";
 
 	
 }
@@ -369,6 +421,12 @@ void PartClusManagerKernel::runMlPart() {
         currentResults.setPartitionId(partitionId);
         currentResults.setNumOfRuns(_options.getSeeds().size());
         std::string evaluationFunction = _options.getEvaluationFunction();
+        
+        PartSolutions bestResult;
+        bestResult.setToolName(_options.getTool());
+        bestResult.setPartitionId(partitionId);
+        bestResult.setNumOfRuns(1);
+        int firstRun = 0;
 
 	int numVertices = hypergraph.getNumVertex();
 	std::vector<short> clusters(numVertices, 0);
@@ -451,14 +509,61 @@ void PartClusManagerKernel::runMlPart() {
                 unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
                 currentResults.addAssignment(clusters, runtime, seed);
+
+                if (_options.getSeeds().size() > 19){
+                        if (firstRun <= 0){
+                                bestResult.addAssignment(clusters, runtime, seed);
+                                _results.push_back(bestResult);
+                                computePartitionResult(partitionId, evaluationFunction);
+                                bestResult = _results.back();
+                                currentResults.clearAssignments();
+                        } else {
+                                currentResults.setNumOfRuns(1);
+                                currentResults.setPartitionId(partitionId + 1);
+                                _results.push_back(currentResults);
+                                computePartitionResult((partitionId + 1), evaluationFunction);
+                                currentResults = _results.back();
+                                bool isNewIdBetter = comparePartitionings(bestResult,
+                                                                          currentResults,
+                                                                          evaluationFunction);
+                                if (isNewIdBetter){
+                                        _results.pop_back();
+                                        _results.pop_back();
+                                        bestResult.clearAssignments();
+                                        bestResult.addAssignment(clusters, runtime, seed);
+
+                                        bestResult.setBestSolutionIdx(0);
+                                        bestResult.setBestRuntime(runtime);
+                                        bestResult.setBestNumHyperedgeCuts(currentResults.getBestNumHyperedgeCuts());
+                                        bestResult.setBestNumTerminals(currentResults.getBestNumTerminals());
+                                        bestResult.setBestHopWeigth(currentResults.getBestHopWeigth());
+                                        bestResult.setBestSetSize(currentResults.getBestSetSize());
+                                        bestResult.setBestSetArea(currentResults.getBestSetArea());
+
+                                        _results.push_back(bestResult);
+                                        currentResults.clearAssignments();
+                                } else {
+                                        _results.pop_back();
+                                        currentResults.clearAssignments();
+                                }
+                        }
+                        firstRun = firstRun + 1;
+                        if (firstRun % 100 == 0){
+                                std::cout << "Partitioned graph for " << firstRun << " seeds.\n";
+                        }
+                } else {
+                        std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
+                }
+
 		std::fill(clusters.begin(), clusters.end(), 0);
-
-                std::cout << "Partitioned graph for seed " << seed << " in " << runtime << " ms.\n";
         }
-        _results.push_back(currentResults);
-        computePartitionResult(partitionId, evaluationFunction);
+        
+        if (_options.getSeeds().size() <= 19){
+                _results.push_back(currentResults);
+                computePartitionResult(partitionId, evaluationFunction);
+        }
 
-        std::cout << "MLPart run completed. Partition ID = " << partitionId << ".\n";
+        std::cout << "MLPart run completed. Partition ID = " << partitionId << ". Total runs = " << _options.getSeeds().size() << ".\n";
 }
 
 
