@@ -333,7 +333,7 @@ proc cluster_netlist { args } {
          } flags {}
 
   # Tool
-  set tools "chaco gpmetis mlpart"
+  set tools "chaco gpmetis mlpart louvain"
   if { ![info exists keys(-tool)] } {
     puts "\[ERROR\] Missing mandatory argument -tool"
     return

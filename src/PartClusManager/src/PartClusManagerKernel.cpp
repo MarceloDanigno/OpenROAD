@@ -45,6 +45,7 @@ extern "C" {
 #include "opendb/db.h"
 #include "metis.h"
 #include "MLPart.h"
+#include "src/LouvainWrapper.h"
 
 namespace PartClusManager {
 
@@ -86,92 +87,6 @@ void PartClusManagerKernel::runChaco() {
         int repartition = _options.getRepartitionCluster();
         std::map<int,int> mappingRepartition;
         short highestCurrentPartition = 0;
-        /* OLD REPARTITION CODE
-        if (_options.getExistingID() > -1 && repartition > -1) {
-                //If a previous solution ID already exists...
-                PartSolutions existingResult = _results[_options.getExistingID()];
-                unsigned existingBestIdx = existingResult.getBestSolutionIdx();
-                const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
-                std::vector<long int> vertexMapping (numVerticesTotal, 0); //Maps vertices from the full graph to the cut graph. vertexMapping[fullGraphIdx] = cutGraphIdx.
-                //Gets the vertex assignments results from the last ID.
-                for (long int currentVertex = vertexResult.size() - 1; currentVertex >= 0; currentVertex = currentVertex - 1) {
-                        short existingPartId = vertexResult[currentVertex];
-                        vertexMapping[currentVertex] = currentVertex;
-                        if (existingPartId > highestCurrentPartition) {
-                                highestCurrentPartition = existingPartId;
-                        }
-                        if (existingPartId != repartition) { //If the current vertex is not in a set that has to be repartitioned, remove it from the CRS.
-                                vertexWeights.erase(vertexWeights.begin() + currentVertex); //Remove from the vertex weights. No problems since we iterate the vertices from last to first.
-                                vertexMapping[currentVertex] = -1;
-                                for (long int currentIndex = (currentVertex + 1) ; currentIndex < vertexMapping.size(); currentIndex++) {
-                                        vertexMapping[currentIndex] = vertexMapping[currentIndex] - 1;
-                                }
-                                int currentRowPtr = rowPtr[currentVertex]; //Gets the beginning of the adjancency vector
-                                if (currentVertex >= (rowPtr.size() - 1)){ //If we're at the end of the vector, just remove everything up until the end.
-                                        //std::cout << "End of colIdx..." << currentVertex << "," << rowPtr.size() << ".\n";
-                                        int endRowPtr = colIdx.size() - 1;
-                                        int removedInterval = (endRowPtr - currentRowPtr) + 1;
-                                        colIdx.erase(colIdx.begin() + currentRowPtr, colIdx.begin() + endRowPtr);
-                                        edgeWeights.erase(edgeWeights.begin() + currentRowPtr, edgeWeights.begin() + endRowPtr);
-                                        for (long int currentRowPtrIndex = currentVertex ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) {
-                                                rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedInterval;
-                                        }
-                                } else { //If not, decrement every adjancency index (from rowPtr) after the current one and remove the segment from the adjancency vector.
-                                        int endRowPtr = rowPtr[currentVertex + 1] - 1;
-                                        //std::cout << "rowprt manipulation4 " <<currentRowPtr << " " << endRowPtr << " " << colIdx.size() << ".\n";
-                                        int removedInterval = (endRowPtr - currentRowPtr) + 1;
-                                        colIdx.erase(colIdx.begin() + currentRowPtr, colIdx.begin() + endRowPtr);
-                                        edgeWeights.erase(edgeWeights.begin() + currentRowPtr, edgeWeights.begin() + endRowPtr);
-                                        for (long int currentRowPtrIndex = currentVertex ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) {
-                                                rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedInterval;
-                                        }
-                                }
-                                rowPtr.erase(rowPtr.begin() + currentVertex); //After the manipulations were done, we can remove the adjancency index.
-                        }
-                }
-                std::map<long int,long int> reverseVertexMapping; //Maps vertices from the cut graph to vertices to the full graph. reverseVertexMapping[cutGraphIdx] = fullGraphIdx;
-                for (long int currentVertex = 0; currentVertex < vertexMapping.size(); currentVertex++) {
-                        long int currentMapping = vertexMapping[currentVertex];
-                        if (currentMapping > -1) {
-                                reverseVertexMapping[currentMapping] = currentVertex;
-                        }
-                }
-                for (long int currentRowPtrIdx = (rowPtr.size() - 1); currentRowPtrIdx >= 0 ; currentRowPtrIdx = currentRowPtrIdx - 1) { //Iterate over rowPtr, in order to remove the leftover vertices from colIdx
-                        long int colEnd = 0; //Gets the end of the adjancency
-                        if (currentRowPtrIdx == (rowPtr.size() - 1)) {
-                                colEnd = colIdx.size() - 1;
-                        } else {
-                                colEnd = rowPtr[currentRowPtrIdx + 1] - 1;
-                        }
-                        long int colStart = rowPtr[currentRowPtrIdx]; //Gets the start of the adjancency
-                        long int colSize = colEnd - colStart; //Gets the number of vertices for that specific vertex
-                        unsigned removedVerticesNum = 0;
-                        for (long int currentColIdx = colEnd; currentColIdx >= colStart; currentColIdx = currentColIdx - 1) { //For each vertex the current vertex is adjancent to...
-                                //std::cout << "Getting the vertex...\n";
-                                long int currentVertex = colIdx[currentColIdx]; //Get the adjancent vertex.
-                                colIdx[currentColIdx] = vertexMapping[currentVertex];
-                                if (vertexMapping[currentVertex] < 0) { //If it is one of the removed vertices...
-                                        removedVerticesNum = removedVerticesNum + 1; //Increment the number of removed vertices by 1.
-                                        colIdx.erase(colIdx.begin() + currentColIdx); //Remove it from the colIdx.
-                                        edgeWeights.erase(edgeWeights.begin() + currentColIdx);
-                                        //std::cout << "Poof!\n";
-                                }
-                        }
-                        if (removedVerticesNum > 0) { //If at least one vertex was removed from colIdx
-                                for (long int currentRowPtrIndex = (currentRowPtrIdx + 1) ; currentRowPtrIndex < rowPtr.size(); currentRowPtrIndex++) { //We have to update the rowPtr to respect those changes.
-                                        rowPtr[currentRowPtrIndex] = rowPtr[currentRowPtrIndex] - removedVerticesNum;
-                                }
-                                
-                                if (removedVerticesNum == colSize) { //And if all vertices were removed, we can remove that vertex
-                                        rowPtr.erase(rowPtr.begin() + (currentRowPtrIdx));
-                                        vertexWeights.erase(vertexWeights.begin() + currentRowPtrIdx);
-                                }
-                                
-                        }
-                }
-                numVertices = vertexWeights.size();
-        }
-        */
         
         int architecture = _options.getArchTopology().size();
         int architectureDims = 1;
@@ -296,31 +211,9 @@ void PartClusManagerKernel::runChaco() {
 
                 std::vector<short> chacoResult;
                 
-                if (repartition > -1) {
-                        //If a previous solution ID already exists...
-                        PartSolutions existingResult = _results[_options.getExistingID()];
-                        unsigned existingBestIdx = existingResult.getBestSolutionIdx();
-                        const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
-                        int currentAssignmentIdx = 0;
-                        for (int i = 0; i < numVerticesTotal; i++) {
-                                short existingPartId = vertexResult[i];
-                                if (existingPartId != repartition) { 
-                                        chacoResult.push_back(existingPartId);
-                                } else {
-                                        short* currentpointer = assigment + currentAssignmentIdx;
-                                        if (*currentpointer == 0){
-                                                chacoResult.push_back(repartition);
-                                        } else {
-                                                chacoResult.push_back(((*currentpointer) + highestCurrentPartition));
-                                        }
-                                        currentAssignmentIdx++;
-                                }
-                        }
-                } else {
-                        for (int i = 0; i < numVertices; i++) {
-                                short* currentpointer = assigment + i;
-                                chacoResult.push_back(*currentpointer);
-                        }
+                for (int i = 0; i < numVertices; i++) {
+                        short* currentpointer = assigment + i;
+                        chacoResult.push_back(*currentpointer);
                 }
                 
                 auto end = std::chrono::system_clock::now();
@@ -859,6 +752,8 @@ void PartClusManagerKernel::runClustering() {
                 runMlPartClustering();
         } else if (_options.getTool() == "gpmetis") {
                 runGpMetisClustering();
+        } else if (_options.getTool() == "louvain") {
+                runLouvainClustering();
         } else {
                 runChacoClustering();
         }
@@ -1032,6 +927,52 @@ void PartClusManagerKernel::runGpMetisClustering() {
 
 void PartClusManagerKernel::runMlPartClustering() {        
 
+}
+
+void PartClusManagerKernel::runLouvainClustering() {
+
+        PartSolutions currentResults;
+        currentResults.setToolName(_options.getTool());
+        unsigned clusterId = generateClusterId();
+        currentResults.setPartitionId(clusterId);
+        currentResults.setNumOfRuns(_options.getSeeds().size());
+        std::string evaluationFunction = _options.getEvaluationFunction();
+
+        std::vector<int> partDegrees = _graph.getRowPtr();
+        std::vector<int> links = _graph.getColIdx();
+        std::vector<int> nodes_w = _graph.getVertexWeight();
+        std::vector<int> partWeights = _graph.getEdgeWeight();
+        std::vector<unsigned long long> degrees(partDegrees.begin(), partDegrees.end());
+        std::vector<long double> weights;
+        for (int i = 0; i < partWeights.size(); i++) {
+                weights.push_back(1.0);
+        }
+        //std::vector<long double> weights(partWeights.begin(), partWeights.end());
+        int level = _options.getLevel();
+
+        auto start = std::chrono::system_clock::now();
+        std::time_t startTime = std::chrono::system_clock::to_time_t(start);
+
+        std::vector<int> vertexAssignment = louvain_partclusmanager(degrees, links, weights, nodes_w, level);
+
+        std::vector<short> louvainResult;
+
+        for (int i = 0; i < vertexAssignment.size(); i++)
+        {
+                louvainResult.push_back(vertexAssignment[i]);
+        }
+
+        auto end = std::chrono::system_clock::now();
+        unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        currentResults.addAssignment(louvainResult, runtime, 0);
+
+        std::cout << "\nClustered graph in " << runtime << " ms.\n";
+
+        _clusResults.push_back(currentResults);
+
+        std::cout << "Louvain run completed. Cluster ID = " << clusterId << ".\n";
+        
 }
 
 unsigned PartClusManagerKernel::generateClusterId(){

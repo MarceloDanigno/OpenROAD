@@ -206,6 +206,7 @@ public:
         void runChacoClustering();
         void runGpMetisClustering();
         void runMlPartClustering();
+        void runLouvainClustering();
         PartOptions& getOptions() { return _options; }
         unsigned getCurrentId() { return (_results.size() - 1); }
         unsigned getCurrentClusId() { return (_clusResults.size() - 1); }
