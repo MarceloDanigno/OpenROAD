@@ -347,7 +347,7 @@ int       give_up;		/* has coarsening bogged down? */
 		struct coarlist currentstruct;
 		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
 
-		for (int i = 0; i < (nvtxs + 1); i++) {
+		for (i = 0; i < (nvtxs + 1); i++) {
 				int* currentpointer = v2cv + i;
 				int* to_update = currentstruct.vec + i;
 				*to_update = *currentpointer;
@@ -378,7 +378,7 @@ int       give_up;		/* has coarsening bogged down? */
 		struct coarlist currentstruct;
 		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
 
-		for (int i = 0; i < (nvtxs + 1); i++) {
+		for (i = 0; i < (nvtxs + 1); i++) {
 				int* currentpointer = v2cv + i;
 				int* to_update = currentstruct.vec + i;
 				*to_update = *currentpointer;
