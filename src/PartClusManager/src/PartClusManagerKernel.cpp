@@ -818,7 +818,7 @@ void PartClusManagerKernel::writePartitioningToDb(unsigned partitioningId) {
         odb::dbBlock* block = getDbBlock();
         for (odb::dbInst* inst: block->getInsts()) {
                 std::string instName = inst->getName();
-                int instIdx = _graph.getMapping(instName);
+                int instIdx = _hypergraph.getMapping(instName);
                 short partitionId = result[instIdx];
                 
                 odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "partition_id");
@@ -1101,7 +1101,7 @@ void PartClusManagerKernel::writeClusteringToDb(unsigned clusteringId) {
         odb::dbBlock* block = getDbBlock();
         for (odb::dbInst* inst: block->getInsts()) {
                 std::string instName = inst->getName();
-                int instIdx = _graph.getMapping(instName);
+                int instIdx = _hypergraph.getMapping(instName);
                 short clusterId = result[instIdx];
                 
                 odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "cluster_id");

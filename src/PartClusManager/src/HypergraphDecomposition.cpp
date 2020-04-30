@@ -101,7 +101,7 @@ void HypergraphDecomposition::createHypergraph(Hypergraph &hypergraph, std::vect
 			for (odb::dbBPin * pin : bterm->getBPins()){
 				int mapping = hypergraph.getMapping(bterm->getName());
 				if (clusters[mapping] == currentCluster){
-		                        if (bterm->getIoType() == odb::dbIoType::INPUT)
+		                        if (driveIdx == -1 && bterm->getIoType() == odb::dbIoType::INPUT)
                 		                driveIdx = mapping;
 					else
 						netVertices.push_back(mapping);

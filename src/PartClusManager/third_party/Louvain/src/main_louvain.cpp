@@ -243,7 +243,7 @@ vector<int> louvain_partclusmanager(vector<unsigned long long> degrees,
                                     vector<long double> weights,
                                     vector<int> nodes_w,
                                     int returnLevel) {
-  srand(time(NULL)+getpid());
+  srand(42);
   
   time_t time_begin, time_end;
   time(&time_begin);
@@ -331,6 +331,10 @@ vector<int> louvain_partclusmanager(vector<unsigned long long> degrees,
     
     if (filename_part!=NULL && level==1) // do at least one more computation if partition is provided
       improvement=true;
+
+    if (returnDone == true){
+      improvement = false;
+    }
   } while(improvement);
   
   time(&time_end);
