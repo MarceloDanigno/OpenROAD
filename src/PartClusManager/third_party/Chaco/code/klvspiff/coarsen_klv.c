@@ -338,26 +338,33 @@ int       give_up;		/* has coarsening bogged down? */
     else
 	cvwgt_max = 1;
 
-	if (step == CLUSTERING_EXPORT && CLUSTERING_EXPORT > -1) {
+	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
 
-		printf("Chaco: Saving clustering for step %d \n", step);
-		
-		static struct coarlist *clusresults = &CLUSTERING_RESULTS;
+	struct coarlist currentstruct;
+	currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
 
-		struct coarlist currentstruct;
-		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
-
-		for (i = 0; i < (nvtxs + 1); i++) {
-				int* currentpointer = v2cv + i;
-				int* to_update = currentstruct.vec + i;
-				*to_update = *currentpointer;
-				/*printf("Index %d set to cluster %d \n", i, *currentpointer);*/
+	if (step == 0) {
+		for (i = 1; i < (nvtxs + 1); i++){
+			int* currentpointer = v2cv + i;
+			int* to_update = currentstruct.vec + i;
+			*to_update = *currentpointer;
+			//printf("Index %d Cluster %d \n", i, *currentpointer);
 		}
-
-		if (clusresults->vec != 0) {
-			free(clusresults->vec);
-		}
+		currentstruct.size = (nvtxs + 1);
 		*clusresults = currentstruct;
+	} else {
+		if (step <= CLUSTERING_EXPORT){
+			for (i = 1; i < clusresults->size; i++){
+				int* previousvalue = clusresults->vec + i;
+				//printf("Index %d Previously on Cluster %d \n", i, *previousvalue);
+				int* currentpointer = v2cv + *previousvalue;
+				//printf("Index %d Now on Cluster %d \n", i, *currentpointer);
+
+				int* to_update = clusresults->vec + i;	
+				*to_update = *currentpointer;
+			}
+			printf("Chaco: Saving clustering for step %d \n", step);
+		}
 	}
 
     cassignment = (short *) smalloc((unsigned) (cnvtxs + 1) * sizeof(short));
@@ -369,24 +376,6 @@ int       give_up;		/* has coarsening bogged down? */
 		igeom, ccoords, cvwgt_max, cassignment, goal, architecture, hops,
 		solver_flag, ndims, nsets, vmax, mediantype, mkconnected,
 		eigtol, nstep, nextstep, &cbndy_list, weights, give_up);
-
-	static struct coarlist *clusresults = &CLUSTERING_RESULTS;
-	if (clusresults->vec == 0 && CLUSTERING_EXPORT > -1) {
-
-		printf("Chaco: Unable to save clustering results for the supplied level. Using step %d instead \n", nextstep);
-
-		struct coarlist currentstruct;
-		currentstruct.vec = (int *) malloc((unsigned) (nvtxs + 1) * sizeof(int));
-
-		for (i = 0; i < (nvtxs + 1); i++) {
-				int* currentpointer = v2cv + i;
-				int* to_update = currentstruct.vec + i;
-				*to_update = *currentpointer;
-				/*printf("Index %d set to cluster %d \n", i, *currentpointer);*/
-		}
-
-		*clusresults = currentstruct;
-	}
 
     /* Interpolate assignment back to fine graph. */
     for (i = 1; i <= nvtxs; i++) {

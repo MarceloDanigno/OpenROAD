@@ -110,4 +110,5 @@ struct flists {				/* linked list of floating lists */
 
 struct coarlist {
 	int *vec;
+	int size;
 };
