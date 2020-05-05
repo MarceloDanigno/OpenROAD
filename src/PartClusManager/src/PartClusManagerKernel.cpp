@@ -164,10 +164,10 @@ void PartClusManagerKernel::runChaco() {
                         //If a previous solution ID already exists...
                         PartSolutions existingResult = _results[_options.getExistingID()];
                         unsigned existingBestIdx = existingResult.getBestSolutionIdx();
-                        const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
+                        const std::vector<unsigned long>& vertexResult = existingResult.getAssignment(existingBestIdx);
                         //Gets the vertex assignments results from the last ID.
                         short* currentIndexShort = assigment;
-                        for(short existingPartId : vertexResult) {
+                        for(unsigned long existingPartId : vertexResult) {
                                 //Apply the Partition IDs to the current assignment vector.
                                 if (existingPartId > oldTargetPartitions){
                                         oldTargetPartitions = existingPartId;
@@ -209,7 +209,7 @@ void PartClusManagerKernel::runChaco() {
                                coarRatio, cutCost,                      /* coarsening ratio and cut to hop cost */
                                0, refinement, level);                   /* debug text enable, refinement and clustering level to export*/
 
-                std::vector<short> chacoResult;
+                std::vector<unsigned long> chacoResult;
                 
                 for (int i = 0; i < numVertices; i++) {
                         short* currentpointer = assigment + i;
@@ -322,7 +322,7 @@ void PartClusManagerKernel::runGpMetis() {
 		colIdx[i] = _graph.getColIdx(i);
 	}
 	for (int seed : _options.getSeeds()) {
-		std::vector<short> gpmetisResults;
+		std::vector<unsigned long> gpmetisResults;
 		auto start = std::chrono::system_clock::now();
 		std::time_t startTime = std::chrono::system_clock::to_time_t(start);
 		options[METIS_OPTION_SEED] = seed;
@@ -429,7 +429,7 @@ void PartClusManagerKernel::runMlPart() {
         int firstRun = 0;
 
 	int numVertices = hypergraph.getNumVertex();
-	std::vector<short> clusters(numVertices, 0);
+	std::vector<unsigned long> clusters(numVertices, 0);
 	double tolerance =  _options.getBalanceConstraint() / 100.0;
 	double balanceArray[2] = {0.5,0.5};
 
@@ -573,7 +573,7 @@ void PartClusManagerKernel::hypergraph(){
 	hypergraphDecomp.init(_dbId);
 	hypergraphDecomp.constructMap(_hypergraph, _options.getMaxVertexWeight());
 	int numVertices = _hypergraph.getNumVertex();
-	std::vector<short> clusters(numVertices, 0);
+	std::vector<unsigned long> clusters(numVertices, 0);
 	hypergraphDecomp.createHypergraph(_hypergraph, clusters, 0);
 	toGraph();
 }
@@ -641,7 +641,7 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
         PartSolutions currentResults = _results[partitionId];
         for (unsigned idx = 0; idx < currentResults.getNumOfRuns(); idx++){
 
-                std::vector<short> currentAssignment = currentResults.getAssignment(idx);
+                std::vector<unsigned long> currentAssignment = currentResults.getAssignment(idx);
                 unsigned long currentRuntime = currentResults.getRuntime(idx);
                 int currentSeed = currentResults.getSeed(idx);
 
@@ -657,12 +657,12 @@ void PartClusManagerKernel::computePartitionResult(unsigned partitionId, std::st
                 int startIndex = 0;
                 
                 for (int endIndex : hyperedgesEnd){ //Iterate over each net in the hypergraph.
-                        std::set<short> netPartitions; //Contains the partitions the net is part of.
+                        std::set<unsigned long> netPartitions; //Contains the partitions the net is part of.
                         std::vector<unsigned> netVertices; //Contains the vertices that are in the net.
                         if (endIndex != 0){
                                 for (int currentIndex = startIndex; currentIndex < endIndex; currentIndex++){ //Iterate over all vertices in the net.
                                         int currentVertex = hyperedgeNets[currentIndex];
-                                        short currentPartition = currentAssignment[currentVertex];
+                                        unsigned long currentPartition = currentAssignment[currentVertex];
                                         netPartitions.insert(currentPartition);
                                         unsigned long currentVertexWeight = _hypergraph.getVertexWeight(idx);
                                         netVertices.push_back(currentVertex);
@@ -813,13 +813,13 @@ void PartClusManagerKernel::writePartitioningToDb(unsigned partitioningId) {
 
         PartSolutions &results = getPartitioningResult(partitioningId);
         unsigned bestSolutionIdx = results.getBestSolutionIdx();
-        const std::vector<short>& result = results.getAssignment(bestSolutionIdx);
+        const std::vector<unsigned long>& result = results.getAssignment(bestSolutionIdx);
 
         odb::dbBlock* block = getDbBlock();
         for (odb::dbInst* inst: block->getInsts()) {
                 std::string instName = inst->getName();
                 int instIdx = _hypergraph.getMapping(instName);
-                short partitionId = result[instIdx];
+                unsigned long partitionId = result[instIdx];
                 
                 odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "partition_id");
                 if (!propId) {
@@ -883,25 +883,10 @@ void PartClusManagerKernel::runChacoClustering() {
         int architecture = _options.getArchTopology().size();
         int architectureDims = 1;
         int* mesh_dims = (int*) malloc((unsigned) 3 * sizeof(int));
-        if (architecture > 0){
-                std::vector<int> archTopology = _options.getArchTopology();
-                for (int i = 0; ((i < architecture) && (i < 3)) ; i++)
-                {
-                        mesh_dims[i] = archTopology[i];
-                        architectureDims = architectureDims * archTopology[i];
-                }
-        }
-
-        int hypercubeDims = 1;
 
         int numVertCoar = _options.getCoarVertices();
 
         int refinement = _options.getRefinement();
-
-        int termPropagation = 0;
-        if (_options.getTermProp()) {
-                termPropagation = 1;
-        }
 
         double inbalance = (double) _options.getBalanceConstraint() / 100;
 
@@ -911,113 +896,70 @@ void PartClusManagerKernel::runChacoClustering() {
 
         int level = _options.getLevel();
 
-        int partitioningMethod = 1; //Multi-level KL
+        auto start = std::chrono::system_clock::now();
+        std::time_t startTime = std::chrono::system_clock::to_time_t(start);
 
-        int kWay = 1; //recursive 2-way
-
-        for (long seed : _options.getSeeds()) {
-                auto start = std::chrono::system_clock::now();
-                std::time_t startTime = std::chrono::system_clock::to_time_t(start);
-
-                int* starts = (int*) malloc((unsigned) (numVertices + 1) * sizeof(int));
-                int* currentIndex = starts;
-                for (int pointer : rowPtr){
-                        *currentIndex = (pointer); 
-                        currentIndex++;
-                }
-                *currentIndex = colIdx.size(); // Needed so Chaco can find the end of the interval of the last vertex
-
-                int* vweights = (int*) malloc((unsigned) numVertices * sizeof(int));
-                currentIndex = vweights;
-                for (int weigth : vertexWeights){
-                        *currentIndex = weigth; 
-                        currentIndex++;
-                }
-
-                int* adjacency = (int*) malloc((unsigned) colIdx.size() * sizeof(int));
-                currentIndex = adjacency;
-                for (int pointer : colIdx){
-                        *currentIndex = (pointer + 1); 
-                        currentIndex++;
-                }
-
-                float* eweights = (float*) malloc((unsigned) colIdx.size() * sizeof(float));
-                float* currentIndexFloat = eweights;
-                for (int weigth : edgeWeights){
-                        *currentIndexFloat = weigth; 
-                        currentIndexFloat++;
-                }
-
-                short* assigment = (short*) malloc((unsigned) numVertices * sizeof(short));
-
-                int oldTargetPartitions = 0;
-
-                if (_options.getExistingID() > -1) {
-                        //If a previous solution ID already exists...
-                        PartSolutions existingResult = _results[_options.getExistingID()];
-                        unsigned existingBestIdx = existingResult.getBestSolutionIdx();
-                        const std::vector<short>& vertexResult = existingResult.getAssignment(existingBestIdx);
-                        //Gets the vertex assignments results from the last ID.
-                        short* currentIndexShort = assigment;
-                        for(short existingPartId : vertexResult) {
-                                //Apply the Partition IDs to the current assignment vector.
-                                if (existingPartId > oldTargetPartitions){
-                                        oldTargetPartitions = existingPartId;
-                                }
-                                *currentIndexShort = existingPartId; 
-                                currentIndexShort++;
-                        }
-
-                        partitioningMethod = 7;
-                        kWay = hypercubeDims;
-                        oldTargetPartitions = oldTargetPartitions + 1;
-
-                        if (architecture) {
-                                hypercubeDims = (int) (std::sqrt( (float) (architectureDims) ));
-                                kWay = hypercubeDims;
-                                if (kWay > 3 || architectureDims < oldTargetPartitions || architectureDims % 2 == 1) {
-                                        std::cout << "Graph has too many sets (>8), the number of target partitions changed or the architecture is invalid.";
-                                        std::exit(1);
-                                }
-                        } else {
-                                if (kWay > 3 || _options.getTargetPartitions() <  oldTargetPartitions) {
-                                        std::cout << "Graph has too many sets (>8) or the number of target partitions changed.";
-                                        std::exit(1);
-                                } 
-                        }
-                }
-
-                interface_wrap(numVertices,                             /* number of vertices */
-                               starts, adjacency, vweights, eweights,   /* graph definition for chaco */
-                               NULL, NULL, NULL,                        /* x y z positions for the inertial method, not needed for multi-level KL */
-                               NULL, NULL,                              /* output assigment name and file, isn't needed because internal methods of PartClusManager are used instead */
-                               assigment,                               /* vertex assigment vector. Contains the set that each vector is present on.*/
-                               architecture, hypercubeDims, mesh_dims,  /* architecture, architecture topology and the hypercube dimensions (number of 2-way divisions) */
-                               NULL,                                    /* desired set sizes for each set, computed automatically, so it isn't needed */
-                               partitioningMethod, 1,                   /* constants that define the methods used by the partitioner -> multi-level KL, KL refinement */
-                               0, numVertCoar, kWay,                    /* disables the eigensolver, number of vertices to coarsen down to and bisection/quadrisection/octasection */
-                               0.001, seed,                             /* tolerance on eigenvectors (hard-coded, not used) and the seed */
-                               termPropagation, inbalance,              /* terminal propagation enable and inbalance */
-                               coarRatio, cutCost,                      /* coarsening ratio and cut to hop cost */
-                               0, refinement, level);                   /* debug text enable, refinement and clustering level to export*/
-
-                std::vector<short> chacoResult;
-                
-                int* clusteringResults = clustering_wrap();
-                for (int i = 0; i < numVertices; i++) {
-                        int* currentpointer = (clusteringResults + 1) + i;
-                        chacoResult.push_back(*currentpointer);
-                }
-                free(clusteringResults);
-
-                auto end = std::chrono::system_clock::now();
-                unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-                currentResults.addAssignment(chacoResult, runtime, seed);
-                free(assigment);
-
-                std::cout << "Clustered graph in " << runtime << " ms.\n";
+        int* starts = (int*) malloc((unsigned) (numVertices + 1) * sizeof(int));
+        int* currentIndex = starts;
+        for (int pointer : rowPtr){
+                *currentIndex = (pointer); 
+                currentIndex++;
         }
+        *currentIndex = colIdx.size(); // Needed so Chaco can find the end of the interval of the last vertex
+
+        int* vweights = (int*) malloc((unsigned) numVertices * sizeof(int));
+        currentIndex = vweights;
+        for (int weigth : vertexWeights){
+                *currentIndex = weigth; 
+                currentIndex++;
+        }
+
+        int* adjacency = (int*) malloc((unsigned) colIdx.size() * sizeof(int));
+        currentIndex = adjacency;
+        for (int pointer : colIdx){
+                *currentIndex = (pointer + 1); 
+                currentIndex++;
+        }
+
+        float* eweights = (float*) malloc((unsigned) colIdx.size() * sizeof(float));
+        float* currentIndexFloat = eweights;
+        for (int weigth : edgeWeights){
+                *currentIndexFloat = weigth; 
+                currentIndexFloat++;
+        }
+
+        short* assigment = (short*) malloc((unsigned) numVertices * sizeof(short));
+
+        interface_wrap(numVertices,                              /* number of vertices */
+                        starts, adjacency, vweights, eweights,   /* graph definition for chaco */
+                        NULL, NULL, NULL,                        /* x y z positions for the inertial method, not needed for multi-level KL */
+                        NULL, NULL,                              /* output assigment name and file, isn't needed because internal methods of PartClusManager are used instead */
+                        assigment,                               /* vertex assigment vector. Contains the set that each vector is present on.*/
+                        architecture, 1, mesh_dims,              /* architecture, architecture topology and the hypercube dimensions (number of 2-way divisions) */
+                        NULL,                                    /* desired set sizes for each set, computed automatically, so it isn't needed */
+                        1, 1,                                    /* constants that define the methods used by the partitioner -> multi-level KL, KL refinement */
+                        0, numVertCoar, 1,                       /* disables the eigensolver, number of vertices to coarsen down to and bisection/quadrisection/octasection */
+                        0.001, 0,                                /* tolerance on eigenvectors (hard-coded, not used) and the seed */
+                        0, inbalance,                            /* terminal propagation enable and inbalance */
+                        coarRatio, cutCost,                      /* coarsening ratio and cut to hop cost */
+                        0, refinement, level);                   /* debug text enable, refinement and clustering level to export*/
+
+        std::vector<unsigned long> chacoResult;
+        
+        int* clusteringResults = clustering_wrap();
+        for (int i = 0; i < numVertices; i++) {
+                int* currentpointer = (clusteringResults + 1) + i;
+                chacoResult.push_back(*currentpointer);
+        }
+        free(clusteringResults);
+
+        auto end = std::chrono::system_clock::now();
+        unsigned long runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        currentResults.addAssignment(chacoResult, runtime, 0);
+        free(assigment);
+
+        std::cout << "Clustered graph in " << runtime << " ms.\n";
 
         _clusResults.push_back(currentResults);
         
@@ -1060,7 +1002,7 @@ void PartClusManagerKernel::runLouvainClustering() {
 
         std::vector<int> vertexAssignment = louvain_partclusmanager(degrees, links, weights, nodes_w, level);
 
-        std::vector<short> louvainResult;
+        std::vector<unsigned long> louvainResult;
 
         for (int i = 0; i < vertexAssignment.size(); i++)
         {
@@ -1096,13 +1038,13 @@ void PartClusManagerKernel::writeClusteringToDb(unsigned clusteringId) {
         }
 
         PartSolutions &results = getClusteringResult(clusteringId);
-        const std::vector<short>& result = results.getAssignment(0); //Clustering uses only 1 seed
+        const std::vector<unsigned long>& result = results.getAssignment(0); //Clustering uses only 1 seed
 
         odb::dbBlock* block = getDbBlock();
         for (odb::dbInst* inst: block->getInsts()) {
                 std::string instName = inst->getName();
                 int instIdx = _hypergraph.getMapping(instName);
-                short clusterId = result[instIdx];
+                unsigned long clusterId = result[instIdx];
                 
                 odb::dbIntProperty* propId = odb::dbIntProperty::find(inst, "cluster_id");
                 if (!propId) {
@@ -1135,13 +1077,13 @@ void PartClusManagerKernel::dumpClusIdToFile(std::string name) {
 // Report Netlist Partitions
 
 void PartClusManagerKernel::reportNetlistPartitions(unsigned partitionId) {
-        std::map<short, unsigned long> setSizes;
-        std::set<short> partitions;
-        short numberOfPartitions = 0;
+        std::map<unsigned long, unsigned long> setSizes;
+        std::set<unsigned long> partitions;
+        unsigned long numberOfPartitions = 0;
         PartSolutions &results = getPartitioningResult(partitionId);
         unsigned bestSolutionIdx = results.getBestSolutionIdx();
-        const std::vector<short>& result = results.getAssignment(bestSolutionIdx);
-        for(short currentPartition : result) {
+        const std::vector<unsigned long>& result = results.getAssignment(bestSolutionIdx);
+        for(unsigned long currentPartition : result) {
                 if (currentPartition > numberOfPartitions) {
                         numberOfPartitions = currentPartition;
                 }
@@ -1154,7 +1096,7 @@ void PartClusManagerKernel::reportNetlistPartitions(unsigned partitionId) {
         }
         std::cout << "[REPORT NETLIST] \nThe netlist has " << (numberOfPartitions + 1) << " partitions.\n\n";
         unsigned long totalVertices = 0;
-        for (short partIdx : partitions){
+        for (unsigned long partIdx : partitions){
                 unsigned long partSize = setSizes[partIdx];
                 std::cout << "Partition " << partIdx << " has " << partSize << " vertices.\n";
                 totalVertices = totalVertices + partSize;

@@ -84,7 +84,7 @@ void HypergraphDecomposition::constructMap(Hypergraph & hypergraph, unsigned max
 }
 
 
-void HypergraphDecomposition::createHypergraph(Hypergraph &hypergraph, std::vector<short> clusters , short currentCluster){
+void HypergraphDecomposition::createHypergraph(Hypergraph &hypergraph, std::vector<unsigned long> clusters , short currentCluster){
 	for (odb::dbNet* net : _block->getNets()){
 		int nITerms = (net->getITerms()).size();
 		int nBTerms = (net->getBTerms()).size();

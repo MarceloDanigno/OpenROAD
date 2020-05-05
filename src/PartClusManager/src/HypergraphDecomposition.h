@@ -63,7 +63,7 @@ public:
 	HypergraphDecomposition() {}
 	void init(int dbId);
 	void constructMap(Hypergraph & hypergraph, unsigned maxVertexWeight);
-	void createHypergraph(Hypergraph & hypergraph, std::vector<short> clusters, short currentCluster);
+	void createHypergraph(Hypergraph & hypergraph, std::vector<unsigned long> clusters, short currentCluster);
         void toGraph(Hypergraph & hypergraph, Graph & graph, std::string graphModelS, unsigned weightingOption,
                                 unsigned maxEdgeWeight, unsigned threshold);
 private:

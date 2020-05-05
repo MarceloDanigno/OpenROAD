@@ -123,7 +123,7 @@ private:
 
 class PartSolutions {
 public:
-        void addAssignment(std::vector<short> currentAssignment, unsigned long runtime, int seed) {
+        void addAssignment(std::vector<unsigned long> currentAssignment, unsigned long runtime, int seed) {
                 _assignmentResults.push_back(currentAssignment);
                 _runtimeResults.push_back(runtime);
                 _seeds.push_back(seed);
@@ -133,7 +133,7 @@ public:
                 _runtimeResults.clear();
                 _seeds.clear();
         }
-        const std::vector<short>& getAssignment(unsigned idx) const { return _assignmentResults[idx]; }
+        const std::vector<unsigned long>& getAssignment(unsigned idx) const { return _assignmentResults[idx]; }
         unsigned long getRuntime(unsigned idx) const { return _runtimeResults[idx]; }
         int getSeed(unsigned idx) const { return _seeds[idx]; }
         void setToolName(std::string name) { _toolName = name; }
@@ -160,20 +160,20 @@ public:
         unsigned long getBestHopWeigth() const { return _bestHopWeigth; }
 
 private:
-        std::vector<std::vector<short>> _assignmentResults;
-        std::vector<unsigned long>      _runtimeResults;
-        std::vector<int>                _seeds;
-        std::string                     _toolName               = "";
-        unsigned                        _partitionId            = 0;
-        unsigned                        _clusterId              = 0;
-        unsigned                        _bestSolutionIdx        = 0;
-        unsigned                        _numOfRuns              = 0;
-        double                          _bestSetSizeSD          = 0;
-        double                          _bestSetAreaSD          = 0;
-        unsigned long                   _bestNumTerminals       = 0;
-        unsigned long                   _bestNumHyperedgeCuts   = 0;
-        unsigned long                   _bestRuntime            = 0;
-        unsigned long                   _bestHopWeigth          = 0;
+        std::vector<std::vector<unsigned long>>         _assignmentResults;
+        std::vector<unsigned long>                      _runtimeResults;
+        std::vector<int>                                _seeds;
+        std::string                                     _toolName               = "";
+        unsigned                                        _partitionId            = 0;
+        unsigned                                        _clusterId              = 0;
+        unsigned                                        _bestSolutionIdx        = 0;
+        unsigned                                        _numOfRuns              = 0;
+        double                                          _bestSetSizeSD          = 0;
+        double                                          _bestSetAreaSD          = 0;
+        unsigned long                                   _bestNumTerminals       = 0;
+        unsigned long                                   _bestNumHyperedgeCuts   = 0;
+        unsigned long                                   _bestRuntime            = 0;
+        unsigned long                                   _bestHopWeigth          = 0;
 
 };
 
