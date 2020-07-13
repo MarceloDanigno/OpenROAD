@@ -312,8 +312,8 @@ void DbWrapper::writeClockNetsToDb(Clock& clockNet) {
                 }
         });
 
-        std::cout << " Minimum number of buffers in the clock path: " << minPath << ".\n";
-        std::cout << " Maximum number of buffers in the clock path: " << maxPath << ".\n";
+        std::cout << "    Minimum number of buffers in the clock path: " << minPath << ".\n";
+        std::cout << "    Maximum number of buffers in the clock path: " << maxPath << ".\n";
 
         std::cout << "    Created " << numClkNets << " clock nets.\n";
         long int currentTotalNets = _options->getNumClockSubnets() + numClkNets;

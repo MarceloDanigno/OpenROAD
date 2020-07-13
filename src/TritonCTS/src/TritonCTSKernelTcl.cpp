@@ -188,8 +188,13 @@ void TritonCTSKernel::set_disable_post_cts(bool disable) {
 void TritonCTSKernel::set_clustering_exponent(unsigned power){
         _options.setClusteringPower(power);
 }
+
 void TritonCTSKernel::set_clustering_unbalance_ratio(double ratio){
         _options.setClusteringCapacity(ratio);
+}
+
+void TritonCTSKernel::set_geo_matching_threshold(unsigned threshold) {
+	_options.setGeoMatchingThreshold(threshold);
 }
 
 }

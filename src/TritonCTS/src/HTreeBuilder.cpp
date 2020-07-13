@@ -35,6 +35,7 @@
 
 
 #include "HTreeBuilder.h"
+#include "GeoMatching.h"
 #include "third_party/CKMeans/clustering.h"
 #include "openroad/Error.hh"
 
@@ -46,6 +47,76 @@
 namespace TritonCTS {
 
 using ord::error;
+
+void HTreeBuilder::preSinkClustering(const std::vector<std::pair<float, float>>& sinks,
+                                    std::vector<std::pair<float, float>>& points,
+                                    std::vector<unsigned>& mapSinkToPoint, float maxDiameter) {
+        points = sinks;
+        for (unsigned point = 0; point < points.size(); ++point) {
+                mapSinkToPoint.push_back(point);
+        }
+
+        GeoMatching matching;
+        unsigned numPoints = points.size();
+        
+        for (unsigned pointIdx = 0; pointIdx < numPoints; ++pointIdx) {
+                const std::pair<float, float>& point = points[pointIdx];                        
+                matching.addPoint(point.first, point.second);
+        }
+        matching.run(20, maxDiameter);
+
+        unsigned clusterCount = 0;
+
+        _clock.forEachSink( [&] (ClockInst& inst) {
+                        Point<double> normLocation( (float) inst.getX() / _wireSegmentUnit,
+                                                    (float) inst.getY() / _wireSegmentUnit);
+                        _mapLocationToSink[normLocation] = &inst;
+                });
+
+        std::vector<std::pair<float,float>> newSinkLocations;
+        for(std::vector<unsigned> cluster : matching.sinkClusteringSolution()){
+                if (cluster.size() == 1){
+                        const std::pair<float, float>& point = points[cluster[0]];    
+                        newSinkLocations.emplace_back(point);
+                }
+                if (cluster.size() > 1){
+                        std::vector<ClockInst*> clusterClockInsts; //sink clock insts
+                        float xSum = 0;
+                        float ySum = 0;
+                        unsigned pointCounter = 0;
+                        for (unsigned i = 0; i < cluster.size(); i++){
+                                const std::pair<double, double>& point = points[cluster[i]];
+                                Point<double> currentPoint(point.first, point.second);
+                                xSum += point.first;
+                                ySum += point.second;
+                                if (_mapLocationToSink.find(currentPoint) == _mapLocationToSink.end()) {
+                                        error("Sink not found.\n");
+                                }
+                                clusterClockInsts.push_back(_mapLocationToSink[currentPoint]); //clock inst needs to be added to the new subnet
+                                pointCounter++;
+                        }
+                        float normCenterX = (xSum / (float) pointCounter);
+                        float normCenterY = (ySum / (float) pointCounter);
+                        DBU centerX = normCenterX * _wireSegmentUnit; //geometric center of cluster
+                        DBU centerY = normCenterY * _wireSegmentUnit;
+                        ClockInst& rootBuffer = _clock.addClockBuffer("clkbuf_leaf_" + std::to_string(clusterCount), _options->getRootBuffer(), 
+                                                                        centerX, centerY); 
+                        Clock::SubNet& clockSubNet = _clock.addSubNet("clknet_leaf_" + std::to_string(clusterCount));
+                        //Subnet that connects the new -sink- buffer to each specific sink
+                        clockSubNet.addInst(rootBuffer);
+                        for (ClockInst* currentClockInst : clusterClockInsts){
+                                clockSubNet.addInst(*currentClockInst);
+                        }
+                        Point<double> newSinkPos(normCenterX, normCenterY);
+                        std::pair<float, float> point(normCenterX, normCenterY);
+                        newSinkLocations.emplace_back(point);
+                        _mapLocationToSink[newSinkPos] = &rootBuffer;
+                }
+                clusterCount++;
+        }
+        _topLevelSinksClustered = newSinkLocations;
+        mapSinkToPoint.clear();
+}
 
 void HTreeBuilder::initSinkRegion() {
         unsigned wireSegmentUnitInMicron = _techChar->getLengthUnit(); 
@@ -85,6 +156,18 @@ void HTreeBuilder::run() {
         _minLengthSinkRegion = _techChar->getMinSegmentLength() * 2;
 
         initSinkRegion();
+
+        std::vector<std::pair<float, float>> points;
+        std::vector<unsigned> mapSinkToPoint;
+        std::vector<std::pair<float, float>> topLevelSinks;
+        initTopLevelSinks(topLevelSinks);
+        DBU dbUnits = _options->getDbUnits();
+
+        float maxDiameter = (50 * dbUnits) / _wireSegmentUnit;
+
+        preSinkClustering(topLevelSinks, points, mapSinkToPoint, maxDiameter);
+
+
         
         for (unsigned level = 1; level <= _clockTreeMaxDepth; ++level) {
                 bool stopCriterionFound = false;
@@ -127,6 +210,7 @@ void HTreeBuilder::run() {
         if (_options->getPlotSolution()) {
                 plotSolution();
         }
+        plotSolution();
         
         createClockSubNets();
 
@@ -168,8 +252,8 @@ void HTreeBuilder::computeLevelTopology(unsigned level, double width, double hei
         
         std::cout << "    Segment length (rounded): " << segmentLength << "\n";
 
-        int vertexBufferLength = _options->getVertexBufferDistance() / (_wireSegmentUnit * 2);
-        int remainingLength = _options->getBufferDistance() / (_wireSegmentUnit * 2);
+        int vertexBufferLength = _options->getVertexBufferDistance() / (_techChar->getLengthUnit() * 2);
+        int remainingLength = _options->getBufferDistance() / (_techChar->getLengthUnit() * 2);
         unsigned inputCap = _minInputCap, inputSlew = 1;
         if (level > 1) {
                 const LevelTopology &previousLevel = _topologyForEachLevel[level-2];
@@ -194,16 +278,17 @@ void HTreeBuilder::computeLevelTopology(unsigned level, double width, double hei
                         unsigned key = 0;
                         if (_options->isSimpleSegmentEnabled()){
                                 remainingLength = remainingLength - (charSegLength/2);
+                                
                                 if (segmentLength >= vertexBufferLength && (wireCount + 1 >= numWires) && _options->isVertexBuffersEnabled()){
                                         remainingLength = 0;
                                         key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
                                                                 SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, true, remainingLength);
-                                        remainingLength = remainingLength + _options->getBufferDistance() / (_wireSegmentUnit * 2);
+                                        remainingLength = remainingLength + _options->getBufferDistance() / (_techChar->getLengthUnit() * 2);
                                 }
                                 if (remainingLength <= 0){
                                         key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
                                                                 SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, true, remainingLength);
-                                        remainingLength = remainingLength + _options->getBufferDistance() / (_wireSegmentUnit * 2);
+                                        remainingLength = remainingLength + _options->getBufferDistance() / (_techChar->getLengthUnit() * 2);
                                 } else {
                                         key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
                                                                 SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, false, remainingLength);
@@ -371,10 +456,8 @@ void HTreeBuilder::computeBranchingPoints(unsigned level, LevelTopology& topolog
                         topology.addBranchingPoint(Point<double>(clockRoot.getX() + topology.getLength(), 
                                                                  clockRoot.getY()),
                                                    LevelTopology::NO_PARENT);
-                std::vector<std::pair<float, float>> topLevelSinks;
-                initTopLevelSinks(topLevelSinks);
                 refineBranchingPointsWithClustering(topology, level, branchPtIdx1, branchPtIdx2, clockRoot,
-                                                    topLevelSinks);
+                                                    _topLevelSinksClustered);
                 return;
         }
         
@@ -430,8 +513,11 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
                                                        unsigned branchPtIdx2, 
                                                        const Point<double>& rootLocation,
                                                        const std::vector<std::pair<float, float>>& sinks ) {
-        //std::cout << "    Refining branch point locations\n";
-        CKMeans::clustering clusteringEngine(sinks, rootLocation.getX(), rootLocation.getY());
+        std::vector<std::pair<float, float>> points;
+        std::vector<unsigned> mapSinkToPoint;
+        preClusteringOpt(sinks, points, mapSinkToPoint);
+        
+        CKMeans::clustering clusteringEngine(points, rootLocation.getX(), rootLocation.getY());
         clusteringEngine.setPlotFileName("plot_" + std::to_string(level) + "_" + 
                                          std::to_string(branchPtIdx1) + "_" + 
                                          std::to_string(branchPtIdx2));
@@ -439,14 +525,9 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
         Point<double>& branchPt1 = topology.getBranchingPoint(branchPtIdx1);
         Point<double>& branchPt2 = topology.getBranchingPoint(branchPtIdx2);
         double targetDist = branchPt2.computeDist(rootLocation);
-        //std::cout << "      R: "  << rootLocation << "\n"; 
-        //std::cout << "      B1: " << branchPt1 << " B2: " << branchPt2 << "\n";
-        //std::cout << "      D1: " << branchPt1.computeDist(rootLocation) 
-        //          << " D2: " << branchPt2.computeDist(rootLocation) << "\n";
        
         std::vector<std::pair<float, float>> means;
         means.emplace_back(branchPt1.getX(), branchPt1.getY());
-        //means.emplace_back(rootLocation.getX(), rootLocation.getY());
         means.emplace_back(branchPt2.getX(), branchPt2.getY());
         
         const unsigned cap = (unsigned) (sinks.size() * _options->getClusteringCapacity());
@@ -454,29 +535,88 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
         branchPt1 = Point<double>(means[0].first, means[0].second);
         branchPt2 = Point<double>(means[1].first, means[1].second);
         
-        //std::cout << "      B1: " << branchPt1 << " B2: " << branchPt2 << "\n";
-        //std::cout << "      D1: " << branchPt1.computeDist(rootLocation) 
-        //          << " D2: " << branchPt2.computeDist(rootLocation) << "\n";
-        
         std::vector<std::vector<unsigned>> clusters;
         clusteringEngine.getClusters(clusters);
-        for (unsigned clusterIdx = 0; clusterIdx < clusters.size(); ++clusterIdx) {
-                //std::cout << "    Cluster size: " << clusters[clusterIdx].size() << "\n";
-                for (unsigned elementIdx = 0; elementIdx < clusters[clusterIdx].size(); ++elementIdx) {
-                        unsigned sinkIdx = clusters[clusterIdx][elementIdx];
-                        Point<double> sinkLoc(sinks[sinkIdx].first, sinks[sinkIdx].second);
-                        if (clusterIdx == 0) {
-                                topology.addSinkToBranch(branchPtIdx1, sinkLoc);
-                        } else {
-                                topology.addSinkToBranch(branchPtIdx2, sinkLoc);
-                        }               
-                }   
-        }
-
+        assignSinksToBranches(topology, branchPtIdx1, branchPtIdx2, sinks, points,
+                              mapSinkToPoint, clusters);
+        
         assert(std::abs(branchPt1.computeDist(rootLocation) - targetDist) < 0.001 && 
                std::abs(branchPt2.computeDist(rootLocation) - targetDist) < 0.001);
 }
 
+void HTreeBuilder::assignSinksToBranches(LevelTopology& topology,
+                                        unsigned branchPtIdx1,
+                                        unsigned branchPtIdx2,
+                                        const std::vector<std::pair<float, float>>& sinks,
+                                        const std::vector<std::pair<float, float>>& points,
+                                        const std::vector<unsigned>& mapSinkToPoint,
+                                        const std::vector<std::vector<unsigned>>& clusters) {
+        
+        std::vector<unsigned> mapPointToCluster(points.size(), 0);   
+        for (unsigned clusterIdx = 0; clusterIdx < clusters.size(); ++clusterIdx) {
+                for (unsigned elementIdx = 0; elementIdx < clusters[clusterIdx].size(); ++elementIdx) {
+                        unsigned pointIdx = clusters[clusterIdx][elementIdx];
+                        mapPointToCluster[pointIdx] = clusterIdx;
+                }   
+        }
+
+        for (unsigned sinkIdx = 0; sinkIdx < sinks.size(); ++sinkIdx) {
+                unsigned pointIdx = mapSinkToPoint[sinkIdx];
+                unsigned clusterIdx = mapPointToCluster[pointIdx];
+                Point<double> sinkLoc(sinks[sinkIdx].first, sinks[sinkIdx].second);
+                if (clusterIdx == 0) {
+                        topology.addSinkToBranch(branchPtIdx1, sinkLoc);
+                } else {
+                        topology.addSinkToBranch(branchPtIdx2, sinkLoc);
+                }                
+        }
+}   
+
+void HTreeBuilder::preClusteringOpt(const std::vector<std::pair<float, float>>& sinks,
+                                    std::vector<std::pair<float, float>>& points,
+                                    std::vector<unsigned>& mapSinkToPoint) {
+        points = sinks;
+        for (unsigned point = 0; point < points.size(); ++point) {
+                mapSinkToPoint.push_back(point);
+        }
+
+        while (points.size() > _options->getGeoMatchingThreshold()) {
+                GeoMatching matching;
+                unsigned numPoints = points.size();
+                if (numPoints % 2 != 0) {
+                        --numPoints;
+                } 
+                
+                for (unsigned pointIdx = 0; pointIdx < numPoints; ++pointIdx) {
+                        const std::pair<float, float>& point = points[pointIdx];                        
+                        matching.addPoint(point.first, point.second);
+                }
+                matching.run();
+               
+                mapSinkToPoint.clear();
+                std::vector<std::pair<float, float>> matchPoints;                
+                for (const Matching& m: matching.allMatchings()) {
+                        unsigned p0 = m.getP0();  
+                        unsigned p1 = m.getP1();
+                        float x0 = points[p0].first;
+                        float y0 = points[p0].second;
+                        float x1 = points[p1].first;
+                        float y1 = points[p1].second;
+                        float xMid = std::min(x0, x1) + std::abs(x0 - x1) / 2.0;
+                        float yMid = std::min(y0, y1) + std::abs(y0 - y1) / 2.0;
+                        matchPoints.emplace_back(xMid, yMid);
+                        unsigned currIdx = matchPoints.size() - 1;
+                        mapSinkToPoint[p0] = currIdx;
+                        mapSinkToPoint[p1] = currIdx;
+                }
+                if (numPoints < points.size()) {
+                        matchPoints.push_back(points.back());
+                        mapSinkToPoint[points.size()-1] = matchPoints.size() - 1;
+                }
+
+                points.swap(matchPoints);
+        }
+}
 
 void HTreeBuilder::createClockSubNets() {
         std::cout << " Building clock sub nets...\n";
@@ -537,12 +677,6 @@ void HTreeBuilder::createClockSubNets() {
         }
 
         // ---
-        std::map<Point<double>, ClockInst*> mapLocationToSink;
-        _clock.forEachSink( [&] (ClockInst& inst) {
-                        Point<double> normLocation( (float) inst.getX() / _wireSegmentUnit,
-                                                    (float) inst.getY() / _wireSegmentUnit);
-                        mapLocationToSink[normLocation] = &inst;
-                });
         
         LevelTopology& leafTopology = _topologyForEachLevel.back();
         unsigned levelIdx = _topologyForEachLevel.size() - 1;
@@ -553,11 +687,11 @@ void HTreeBuilder::createClockSubNets() {
                 
                 const std::vector<Point<double>>& sinkLocs = leafTopology.getBranchSinksLocations(idx);
                 for (const Point<double>& loc : sinkLocs) {
-                        if (mapLocationToSink.find(loc) == mapLocationToSink.end()) {
+                        if (_mapLocationToSink.find(loc) == _mapLocationToSink.end()) {
                                 error("Sink not found.\n");
                         }
                         
-                        subNet->addInst(*mapLocationToSink[loc]);
+                        subNet->addInst(*_mapLocationToSink[loc]);
                         ++numSinks;
                 }  
         });

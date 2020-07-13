@@ -53,12 +53,13 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
                                              [-branching_point_buffers_distance] \
                                              [-clustering_exponent] \
                                              [-clustering_unbalance_ratio] \
+					                                   [-geo_matching_threshold] \
                                             } 
 
 proc clock_tree_synthesis { args } {
   sta::parse_key_args "clock_tree_synthesis" args \
     keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter \
-    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio} \
+    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -geo_matching_threshold} \
     flags {-characterization_only -post_cts_disable}
 
   set cts [get_triton_cts]
@@ -184,6 +185,12 @@ proc clock_tree_synthesis { args } {
       #User must enter capacitance and resistance per square (um²) when creating a new characterization.
       ord::error "Missing argument -sqr_cap and/or -sqr_res"
     }
+  }
+
+  if { [info exists keys(-geo_matching_threshold)] } {
+        set threshold $keys(-geo_matching_threshold)
+	      puts $threshold
+        $cts set_geo_matching_threshold $threshold
   }
 
   if {[catch {$cts run_triton_cts} error_msg options]} {

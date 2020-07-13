@@ -135,6 +135,8 @@ public:
         void setVertexBuffersEnabled(bool enable) { _vertexBuffersEnable = enable; }
         bool isSimpleSegmentEnabled()  const { return _simpleSegmentsEnable; }
         void setSimpleSegmentsEnabled(bool enable) { _simpleSegmentsEnable = enable; }
+        void setGeoMatchingThreshold(unsigned threshold) { _geoMatchingThreshold = threshold; }
+        unsigned getGeoMatchingThreshold() { return _geoMatchingThreshold; }
 
 private:
         std::string _blockName                  = "";
@@ -177,6 +179,7 @@ private:
         long int    _clockSubnets               = 0;
         long int    _buffersInserted            = 0;
         long int    _sinks                      = 0;
+        unsigned    _geoMatchingThreshold       = 100000;
         std::vector<std::string> _bufferList;
         std::vector<odb::dbNet*> _clockNetsObjs;
 };

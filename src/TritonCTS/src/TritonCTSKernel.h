@@ -108,6 +108,7 @@ public:
         void set_disable_post_cts(bool disable);
         void set_clustering_exponent(unsigned power);
         void set_clustering_unbalance_ratio(double ratio);
+	void set_geo_matching_threshold(unsigned threshold);
 };
 
 }
