@@ -197,4 +197,16 @@ void TritonCTSKernel::set_geo_matching_threshold(unsigned threshold) {
 	_options.setGeoMatchingThreshold(threshold);
 }
 
+void TritonCTSKernel::set_sink_clustering_size(unsigned size){
+        _options.setSizeSinkClustering(size);
+}
+
+void TritonCTSKernel::set_clustering_diameter(double distance){
+        _options.setMaxDiameter(distance);
+}
+
+void TritonCTSKernel::set_num_static_layers(unsigned num){
+        _options.setNumStaticLayers(num);
+}
+
 }

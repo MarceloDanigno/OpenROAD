@@ -35,7 +35,7 @@
 
 
 #include "HTreeBuilder.h"
-#include "GeoMatching.h"
+#include "SinkClustering.h"
 #include "third_party/CKMeans/clustering.h"
 #include "openroad/Error.hh"
 
@@ -48,22 +48,17 @@ namespace TritonCTS {
 
 using ord::error;
 
-void HTreeBuilder::preSinkClustering(const std::vector<std::pair<float, float>>& sinks,
-                                    std::vector<std::pair<float, float>>& points,
-                                    std::vector<unsigned>& mapSinkToPoint, float maxDiameter) {
-        points = sinks;
-        for (unsigned point = 0; point < points.size(); ++point) {
-                mapSinkToPoint.push_back(point);
-        }
+void HTreeBuilder::preSinkClustering(std::vector<std::pair<float, float>>& sinks, float maxDiameter, unsigned clusterSize) {
+        std::vector<std::pair<float, float>>& points = sinks;
 
-        GeoMatching matching;
+        SinkClustering matching;
         unsigned numPoints = points.size();
         
         for (unsigned pointIdx = 0; pointIdx < numPoints; ++pointIdx) {
                 const std::pair<float, float>& point = points[pointIdx];                        
                 matching.addPoint(point.first, point.second);
         }
-        matching.run(20, maxDiameter);
+        matching.run(clusterSize, maxDiameter);
 
         unsigned clusterCount = 0;
 
@@ -115,7 +110,6 @@ void HTreeBuilder::preSinkClustering(const std::vector<std::pair<float, float>>&
                 clusterCount++;
         }
         _topLevelSinksClustered = newSinkLocations;
-        mapSinkToPoint.clear();
 }
 
 void HTreeBuilder::initSinkRegion() {
@@ -149,6 +143,9 @@ void HTreeBuilder::initSinkRegion() {
 void HTreeBuilder::run() {
         std::cout << " Generating H-Tree topology for net " << _clock.getName() << "...\n";
         std::cout << "    Tot. number of sinks: " << _clock.getNumSinks() << "\n";
+        std::cout << "    Sinks will be clustered in groups of " << _options->getSizeSinkClustering() << " and a maximum diameter of " <<
+                     _options->getMaxDiameter() << " um\n";  
+        std::cout << "    Number of static layers: " << _options->getNumStaticLayers() << "\n";
        
         _clockTreeMaxDepth = _options->getClockTreeMaxDepth();
         _minInputCap = _techChar->getActualMinInputCap();
@@ -157,17 +154,13 @@ void HTreeBuilder::run() {
 
         initSinkRegion();
 
-        std::vector<std::pair<float, float>> points;
-        std::vector<unsigned> mapSinkToPoint;
         std::vector<std::pair<float, float>> topLevelSinks;
         initTopLevelSinks(topLevelSinks);
         DBU dbUnits = _options->getDbUnits();
 
-        float maxDiameter = (50 * dbUnits) / _wireSegmentUnit;
+        float maxDiameter = (_options->getMaxDiameter() * dbUnits) / _wireSegmentUnit;
 
-        preSinkClustering(topLevelSinks, points, mapSinkToPoint, maxDiameter);
-
-
+        preSinkClustering(topLevelSinks, maxDiameter, _options->getSizeSinkClustering());
         
         for (unsigned level = 1; level <= _clockTreeMaxDepth; ++level) {
                 bool stopCriterionFound = false;
@@ -447,18 +440,33 @@ unsigned HTreeBuilder::computeMinDelaySegment(unsigned length, unsigned inputSle
 
 void HTreeBuilder::computeBranchingPoints(unsigned level, LevelTopology& topology) {
         if (level == 1) {
-                Point<double> clockRoot(_sinkRegion.computeCenter());
-                unsigned branchPtIdx1 = 
-                        topology.addBranchingPoint(Point<double>(clockRoot.getX() - topology.getLength(), 
-                                                                 clockRoot.getY()),
-                                                   LevelTopology::NO_PARENT); 
-                unsigned branchPtIdx2 = 
-                        topology.addBranchingPoint(Point<double>(clockRoot.getX() + topology.getLength(), 
-                                                                 clockRoot.getY()),
-                                                   LevelTopology::NO_PARENT);
-                refineBranchingPointsWithClustering(topology, level, branchPtIdx1, branchPtIdx2, clockRoot,
-                                                    _topLevelSinksClustered);
-                return;
+                if (isHorizontal(level)) {
+                        Point<double> clockRoot(_sinkRegion.computeCenter());
+                        unsigned branchPtIdx1 = 
+                                topology.addBranchingPoint(Point<double>(clockRoot.getX() - topology.getLength(), 
+                                                                        clockRoot.getY()),
+                                                        LevelTopology::NO_PARENT); 
+                        unsigned branchPtIdx2 = 
+                                topology.addBranchingPoint(Point<double>(clockRoot.getX() + topology.getLength(), 
+                                                                        clockRoot.getY()),
+                                                        LevelTopology::NO_PARENT);
+                        refineBranchingPointsWithClustering(topology, level, branchPtIdx1, branchPtIdx2, clockRoot,
+                                                        _topLevelSinksClustered);
+                        return;
+                } else {
+                        Point<double> clockRoot(_sinkRegion.computeCenter());
+                        unsigned branchPtIdx1 = 
+                                topology.addBranchingPoint(Point<double>(clockRoot.getX(), 
+                                                                         clockRoot.getY() - topology.getLength()),
+                                                        LevelTopology::NO_PARENT); 
+                        unsigned branchPtIdx2 = 
+                                topology.addBranchingPoint(Point<double>(clockRoot.getX(), 
+                                                                         clockRoot.getY() + topology.getLength()),
+                                                        LevelTopology::NO_PARENT);
+                        refineBranchingPointsWithClustering(topology, level, branchPtIdx1, branchPtIdx2, clockRoot,
+                                                        _topLevelSinksClustered);
+                        return;
+                }
         }
         
         LevelTopology& parentTopology = _topologyForEachLevel[level-2];
@@ -532,8 +540,13 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
         
         const unsigned cap = (unsigned) (sinks.size() * _options->getClusteringCapacity());
         clusteringEngine.iterKmeans(1, means.size(), cap, 0, means, 5, _options->getClusteringPower());
-        branchPt1 = Point<double>(means[0].first, means[0].second);
-        branchPt2 = Point<double>(means[1].first, means[1].second);
+        if (_options->getNumStaticLayers() > 0){
+                _options->setNumStaticLayers(_options->getNumStaticLayers() - 1);
+        } else {
+                branchPt1 = Point<double>(means[0].first, means[0].second);
+                branchPt2 = Point<double>(means[1].first, means[1].second);
+        }
+        
         
         std::vector<std::vector<unsigned>> clusters;
         clusteringEngine.getClusters(clusters);
@@ -560,15 +573,26 @@ void HTreeBuilder::assignSinksToBranches(LevelTopology& topology,
                 }   
         }
 
+        std::vector<unsigned> clusterDistribution(2, 0);
         for (unsigned sinkIdx = 0; sinkIdx < sinks.size(); ++sinkIdx) {
                 unsigned pointIdx = mapSinkToPoint[sinkIdx];
                 unsigned clusterIdx = mapPointToCluster[pointIdx];
+                clusterDistribution[clusterIdx] += 1;
                 Point<double> sinkLoc(sinks[sinkIdx].first, sinks[sinkIdx].second);
-                if (clusterIdx == 0) {
-                        topology.addSinkToBranch(branchPtIdx1, sinkLoc);
+                if((sinkIdx + 1) == sinks.size() && sinks.size() > 1){
+                        if (clusterDistribution[0] == 0){
+                                topology.addSinkToBranch(branchPtIdx1, sinkLoc);
+                        }
+                        if (clusterDistribution[1] == 0){
+                                topology.addSinkToBranch(branchPtIdx2, sinkLoc);
+                        }
                 } else {
-                        topology.addSinkToBranch(branchPtIdx2, sinkLoc);
-                }                
+                        if (clusterIdx == 0) {
+                                topology.addSinkToBranch(branchPtIdx1, sinkLoc);
+                        } else {
+                                topology.addSinkToBranch(branchPtIdx2, sinkLoc);
+                        }  
+                }              
         }
 }   
 
@@ -581,7 +605,7 @@ void HTreeBuilder::preClusteringOpt(const std::vector<std::pair<float, float>>& 
         }
 
         while (points.size() > _options->getGeoMatchingThreshold()) {
-                GeoMatching matching;
+                SinkClustering matching;
                 unsigned numPoints = points.size();
                 if (numPoints % 2 != 0) {
                         --numPoints;

@@ -137,7 +137,12 @@ public:
         void setSimpleSegmentsEnabled(bool enable) { _simpleSegmentsEnable = enable; }
         void setGeoMatchingThreshold(unsigned threshold) { _geoMatchingThreshold = threshold; }
         unsigned getGeoMatchingThreshold() { return _geoMatchingThreshold; }
-
+        double getMaxDiameter()  const { return _maxDiameter; }
+        void setMaxDiameter(double distance) { _maxDiameter = distance; }
+        unsigned getSizeSinkClustering()  const { return _sinkClustersSize; }
+        void setSizeSinkClustering(unsigned size) { _sinkClustersSize = size; }
+        unsigned getNumStaticLayers()  const { return _numStaticLayers; }
+        void setNumStaticLayers(unsigned num) { _numStaticLayers = num; }
 private:
         std::string _blockName                  = "";
         std::string _lutFile                    = "";
@@ -180,6 +185,9 @@ private:
         long int    _buffersInserted            = 0;
         long int    _sinks                      = 0;
         unsigned    _geoMatchingThreshold       = 100000;
+        double      _maxDiameter                = 50;
+        unsigned    _sinkClustersSize           = 20;
+        unsigned    _numStaticLayers            = 0;
         std::vector<std::string> _bufferList;
         std::vector<odb::dbNet*> _clockNetsObjs;
 };

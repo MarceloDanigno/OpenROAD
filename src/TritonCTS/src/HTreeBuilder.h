@@ -197,7 +197,7 @@ private:
         void computeBranchSinks(LevelTopology& topology, unsigned branchIdx,
                                 std::vector<std::pair<float,float>>& sinkLocations) const;
         
-        bool isVertical(unsigned level) const { return level % 2 == 0; }
+        bool isVertical(unsigned level) const { return level % 2 == (_sinkRegion.getHeight() >= _sinkRegion.getWidth()); }
         bool isHorizontal(unsigned level) const { return !isVertical(level); }
 
         unsigned computeGridSizeX(unsigned level) const { return std::pow(2, (level + 1) / 2); }
@@ -213,9 +213,8 @@ private:
         void preClusteringOpt(const std::vector<std::pair<float, float>>& sinks,
                               std::vector<std::pair<float, float>>& points,
                               std::vector<unsigned>& mapSinkToPoint);
-        void preSinkClustering(const std::vector<std::pair<float, float>>& sinks,
-                                    std::vector<std::pair<float, float>>& points,
-                                    std::vector<unsigned>& mapSinkToPoint, float maxDiameter);
+        void preSinkClustering(std::vector<std::pair<float, float>>& sinks,
+                                    float maxDiameter, unsigned clusterSize);
         void assignSinksToBranches(LevelTopology& topology,
                                    unsigned branchPtIdx1,
                                    unsigned branchPtIdx2,

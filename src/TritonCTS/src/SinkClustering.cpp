@@ -1,4 +1,4 @@
-#include "GeoMatching.h"
+#include "SinkClustering.h"
 #include <tuple>
 #include <iostream>
 #include <cmath> 
@@ -9,7 +9,7 @@
 
 namespace TritonCTS {
 
-void GeoMatching::normalizePoints(float maxDiameter) {
+void SinkClustering::normalizePoints(float maxDiameter) {
         double xMax = -std::numeric_limits<double>::infinity();
         double xMin =  std::numeric_limits<double>::infinity();
         double yMax = -std::numeric_limits<double>::infinity();
@@ -33,7 +33,7 @@ void GeoMatching::normalizePoints(float maxDiameter) {
         _maxInternalDiameter = maxDiameter / std::min(xSpan, ySpan);
 }
 
-void GeoMatching::computeAllThetas() {
+void SinkClustering::computeAllThetas() {
         for (unsigned idx = 0; idx < _points.size(); ++idx) {
                 const Point<double>& p = _points[idx];
                 double theta = computeTheta(p.getX(), p.getY());
@@ -41,11 +41,11 @@ void GeoMatching::computeAllThetas() {
         }
 }
 
-void GeoMatching::sortPoints() {
+void SinkClustering::sortPoints() {
         std::sort(_thetaIndexVector.begin(), _thetaIndexVector.end());
 }
 
-double GeoMatching::computeTheta(double x, double y) const {
+double SinkClustering::computeTheta(double x, double y) const {
         if (isOne(x) && isOne(y)) {
                 return 0.5;        
         }
@@ -65,7 +65,7 @@ double GeoMatching::computeTheta(double x, double y) const {
         return fractal;
 }
 
-unsigned GeoMatching::numVertex(unsigned x, unsigned y) const {
+unsigned SinkClustering::numVertex(unsigned x, unsigned y) const {
         if ((x == 0) && (y == 0)) {
                 return 0;
         } else if ((x == 0) && (y == 1)) {
@@ -80,7 +80,7 @@ unsigned GeoMatching::numVertex(unsigned x, unsigned y) const {
         std::exit(1);
 }
 
-void GeoMatching::findBestMatching() {
+void SinkClustering::findBestMatching() {
         std::vector<Matching> matching0;
         std::vector<Matching> matching1;
         double matchingCost0 = 0.0;
@@ -120,7 +120,7 @@ void GeoMatching::findBestMatching() {
         }
 }
 
-void GeoMatching::run() {
+void SinkClustering::run() {
         normalizePoints();
         computeAllThetas();
         sortPoints();
@@ -128,7 +128,7 @@ void GeoMatching::run() {
         writePlotFile();
 }
 
-void GeoMatching::run(unsigned groupSize, float maxDiameter) {
+void SinkClustering::run(unsigned groupSize, float maxDiameter) {
         normalizePoints(maxDiameter);
         computeAllThetas();
         sortPoints();
@@ -136,7 +136,7 @@ void GeoMatching::run(unsigned groupSize, float maxDiameter) {
         writePlotFile(groupSize);
 }
 
-void GeoMatching::writePlotFile() {
+void SinkClustering::writePlotFile() {
         std::ofstream file("plot.py");
         file << "import numpy as np\n"; 
         file << "import matplotlib.pyplot as plt\n";
@@ -160,7 +160,7 @@ void GeoMatching::writePlotFile() {
         file.close();
 }
 
-void GeoMatching::findBestMatching(unsigned groupSize) {
+void SinkClustering::findBestMatching(unsigned groupSize) {
         //Counts how many clusters are in each solution.
         std::vector<unsigned> clusters (groupSize, 0);
         //Keeps track of the total cost of each solution.
@@ -205,6 +205,9 @@ void GeoMatching::findBestMatching(unsigned groupSize) {
                         //If the cluster size is higher than groupSize, or the distance is higher than _maxInternalDiameter -> start another cluster and save the cost of the current one.
                         if (solutionPoints[j][clusters[j]].size() >= groupSize || distanceCost > _maxInternalDiameter){
                                 //The cost is computed as the highest cost found on the current cluster
+                                if (previousCosts[j] == 0){
+                                        previousCosts[j] = _maxInternalDiameter;
+                                }
                                 costs[j] += previousCosts[j];
                                 //A new cluster is defined
                                 clusters[j] = clusters[j] + 1;
@@ -250,6 +253,9 @@ void GeoMatching::findBestMatching(unsigned groupSize) {
                                 }
                         }
                         if (solutionPoints[j][clusters[j]].size() >= groupSize || distanceCost > _maxInternalDiameter){
+                                if (previousCosts[j] == 0){
+                                        previousCosts[j] = _maxInternalDiameter;
+                                }
                                 costs[j] += previousCosts[j];
                                 clusters[j] = clusters[j] + 1;
                                 previousCosts[j] = 0;
@@ -284,7 +290,7 @@ void GeoMatching::findBestMatching(unsigned groupSize) {
         _bestSolution = solutions[bestSolution];
 }
 
-void GeoMatching::writePlotFile(unsigned groupSize) {
+void SinkClustering::writePlotFile(unsigned groupSize) {
         std::ofstream file("plot_clustering.py");
         file << "import numpy as np\n"; 
         file << "import matplotlib.pyplot as plt\n";

@@ -54,12 +54,15 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
                                              [-clustering_exponent] \
                                              [-clustering_unbalance_ratio] \
 					                                   [-geo_matching_threshold] \
+                                             [-sink_clustering_size] \
+                                             [-sink_clustering_max_diameter] \
+                                             [-num_static_layers] \
                                             } 
 
 proc clock_tree_synthesis { args } {
   sta::parse_key_args "clock_tree_synthesis" args \
-    keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter \
-    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -geo_matching_threshold} \
+    keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter -sink_clustering_size -num_static_layers \
+    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -geo_matching_threshold -sink_clustering_max_diameter} \
     flags {-characterization_only -post_cts_disable}
 
   set cts [get_triton_cts]
@@ -75,6 +78,21 @@ proc clock_tree_synthesis { args } {
   $cts set_only_characterization [info exists flags(-characterization_only)]
 
   $cts set_disable_post_cts [info exists flags(-post_cts_disable)]
+
+  if { [info exists keys(-sink_clustering_size)] } {
+    set size $keys(-sink_clustering_size)
+    $cts set_sink_clustering_size $size
+  } 
+
+  if { [info exists keys(-sink_clustering_max_diameter)] } {
+    set distance $keys(-sink_clustering_max_diameter)
+    $cts set_clustering_diameter $distance
+  } 
+
+  if { [info exists keys(-num_static_layers)] } {
+    set num $keys(-num_static_layers)
+    $cts set_num_static_layers $num
+  } 
 
   if { [info exists keys(-distance_between_buffers)] } {
     set distance $keys(-distance_between_buffers)

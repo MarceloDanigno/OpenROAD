@@ -109,6 +109,9 @@ public:
         void set_clustering_exponent(unsigned power);
         void set_clustering_unbalance_ratio(double ratio);
 	void set_geo_matching_threshold(unsigned threshold);
+        void set_sink_clustering_size(unsigned size);
+        void set_clustering_diameter(double distance);
+        void set_num_static_layers(unsigned num);
 };
 
 }

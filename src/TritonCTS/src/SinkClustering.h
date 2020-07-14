@@ -21,9 +21,9 @@ private:
         unsigned _p1;
 };
 
-class GeoMatching {
+class SinkClustering {
 public:
-        GeoMatching() = default;
+        SinkClustering() = default;
 
         void addPoint(double x, double y) {  _points.emplace_back(x, y); }
         void run();
