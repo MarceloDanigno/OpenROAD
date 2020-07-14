@@ -540,9 +540,7 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
         
         const unsigned cap = (unsigned) (sinks.size() * _options->getClusteringCapacity());
         clusteringEngine.iterKmeans(1, means.size(), cap, 0, means, 5, _options->getClusteringPower());
-        if (_options->getNumStaticLayers() > 0){
-                _options->setNumStaticLayers(_options->getNumStaticLayers() - 1);
-        } else {
+        if (((int) _options->getNumStaticLayers() - (int) level) < 0){
                 branchPt1 = Point<double>(means[0].first, means[0].second);
                 branchPt2 = Point<double>(means[1].first, means[1].second);
         }
