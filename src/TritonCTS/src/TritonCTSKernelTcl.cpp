@@ -171,4 +171,8 @@ void TritonCTSKernel::report_cts_metrics(){
         reportCtsMetrics();
 };
 
+void TritonCTSKernel::set_tree_buf(const char* buffer) {
+        _options.setTreeBuffer(buffer);
+}
+
 }

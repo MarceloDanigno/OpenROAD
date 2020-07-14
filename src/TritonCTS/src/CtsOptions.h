@@ -123,6 +123,8 @@ public:
         long int getNumBuffersInserted() const { return _buffersInserted; }
         void setNumSinks(long int sinks) { _sinks = sinks; }
         long int getNumSinks() const { return _sinks; }
+        void setTreeBuffer(const std::string& buffer) { _treeBuffer = buffer; }
+        std::string getTreeBuffer() const { return  _treeBuffer; }
                 
 private:
         std::string _blockName                  = "";
@@ -131,6 +133,7 @@ private:
         std::string _outputPath                 = "";
         std::string _clockNets                  = "";
         std::string _rootBuffer                 = "";
+        std::string _treeBuffer                 = "";
         std::string _metricFile                 = "";
         DBU         _dbUnits                    = -1;
         unsigned    _wireSegmentUnit            = 0;

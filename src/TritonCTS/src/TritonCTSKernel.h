@@ -103,6 +103,7 @@ public:
         void report_wire_segments(unsigned length, unsigned load, unsigned outputSlew); 
         void set_metric_output(const char* file);
         void report_cts_metrics();
+        void set_tree_buf(const char* buffer);
 };
 
 }
