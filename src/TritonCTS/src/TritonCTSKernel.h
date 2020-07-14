@@ -104,6 +104,11 @@ public:
         void set_metric_output(const char* file);
         void report_cts_metrics();
         void set_tree_buf(const char* buffer);
+        void set_distance_between_buffers(double distance);
+        void set_branching_point_buffers_distance(double distance);
+        void set_disable_post_cts(bool disable);
+        void set_clustering_exponent(unsigned power);
+        void set_clustering_unbalance_ratio(double ratio);
 };
 
 }
