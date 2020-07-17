@@ -50,6 +50,11 @@ using ord::error;
 
 void HTreeBuilder::preSinkClustering(std::vector<std::pair<float, float>>& sinks, float maxDiameter, unsigned clusterSize) {
         std::vector<std::pair<float, float>>& points = sinks;
+        
+        if (sinks.size() <= 200){
+                _topLevelSinksClustered = sinks;
+                return;
+        }
 
         SinkClustering matching;
         unsigned numPoints = points.size();
