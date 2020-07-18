@@ -209,4 +209,8 @@ void TritonCTSKernel::set_num_static_layers(unsigned num){
         _options.setNumStaticLayers(num);
 }
 
+void TritonCTSKernel::set_sink_buffer(const char* buffer) {
+        _options.setSinkBuffer(buffer);
+}
+
 }

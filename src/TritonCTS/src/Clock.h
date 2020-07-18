@@ -169,6 +169,7 @@ public:
         unsigned getNumSinks() const { return _sinks.size(); }
 
         Box<DBU> computeSinkRegion();
+        Box<double> computeSinkRegionClustered(std::vector<std::pair<float, float>> sinks);
         Box<double> computeNormalizedSinkRegion(double factor);
         
         void report() const;

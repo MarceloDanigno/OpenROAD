@@ -143,6 +143,8 @@ public:
         void setSizeSinkClustering(unsigned size) { _sinkClustersSize = size; }
         unsigned getNumStaticLayers()  const { return _numStaticLayers; }
         void setNumStaticLayers(unsigned num) { _numStaticLayers = num; }
+        void setSinkBuffer(const std::string& buffer) { _sinkBuffer = buffer; }
+        std::string getSinkBuffer() const { return  _sinkBuffer; }
 private:
         std::string _blockName                  = "";
         std::string _lutFile                    = "";
@@ -150,6 +152,7 @@ private:
         std::string _outputPath                 = "";
         std::string _clockNets                  = "";
         std::string _rootBuffer                 = "";
+        std::string _sinkBuffer                 = "";
         std::string _metricFile                 = "";
         DBU         _dbUnits                    = -1;
         unsigned    _wireSegmentUnit            = 0;

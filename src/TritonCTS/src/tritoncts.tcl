@@ -57,11 +57,12 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
                                              [-sink_clustering_size] \
                                              [-sink_clustering_max_diameter] \
                                              [-num_static_layers] \
+                                             [-sink_clustering_buffer] \
                                             } 
 
 proc clock_tree_synthesis { args } {
   sta::parse_key_args "clock_tree_synthesis" args \
-    keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter -sink_clustering_size -num_static_layers \
+    keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter -sink_clustering_size -num_static_layers -sink_clustering_buffer\
     -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -geo_matching_threshold -sink_clustering_max_diameter} \
     flags {-characterization_only -post_cts_disable}
 
@@ -181,11 +182,19 @@ proc clock_tree_synthesis { args } {
   } else {
     if { [info exists keys(-buf_list)] } {
       #If using -buf_list, the first buffer can become the root buffer.
-      $cts set_root_buffer [lindex $buf_list 0]
+      set root_buf [lindex $buf_list 0]
+      $cts set_root_buffer $root_buf
     } else {
       #User must enter at least one of -root_buf or -buf_list.
       ord::error "Missing argument -root_buf"
     }
+  }
+
+  if { [info exists keys(-sink_clustering_buffer)] } {
+    set sink_buf $keys(-sink_clustering_buffer)
+    $cts set_sink_buffer $sink_buf
+  } else {
+    $cts set_sink_buffer $root_buf
   }
 
   if { [info exists keys(-out_path)] && (![info exists keys(-lut_file)] || ![info exists keys(-sol_list)]) } {
