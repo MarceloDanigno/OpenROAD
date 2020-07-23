@@ -79,6 +79,7 @@ private:
         TritonCTSKernel*  _kernel               = nullptr;  
         unsigned          _numberOfClocks       = 0;       
         unsigned          _numClkNets           = 0;   
+        unsigned          _numFixedNets         = 0;
 
         void parseClockNames(std::vector<std::string>& clockNetNames) const;
 
@@ -89,7 +90,7 @@ private:
         void disconnectAllSinksFromNet(odb::dbNet* net);
         void disconnectAllPinsFromNet(odb::dbNet* net);
         void checkUpstreamConnections(odb::dbNet* net);
-        void createClockBuffers(const Clock& clk);
+        void createClockBuffers(Clock& clk);
         void removeNonClockNets();
         void computeITermPosition(odb::dbITerm* term, DBU &x, DBU &y) const;
         std::pair<int,int> branchBufferCount(ClockInst *inst, int bufCounter, Clock& clockNet);
