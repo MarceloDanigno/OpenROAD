@@ -50,6 +50,14 @@ void TritonCTSKernel::set_only_characterization(bool enable) {
         _options.setOnlyCharacterization(enable);
 }
 
+void TritonCTSKernel::set_simple_cts(bool enable) {
+        _options.setSimpleCts(enable);
+}
+
+void TritonCTSKernel::set_sink_clustering(bool enable) {
+        _options.setSinkClustering(enable);
+}
+
 void TritonCTSKernel::set_auto_lut(bool enable) {
         _options.setAutoLut(enable);
 }

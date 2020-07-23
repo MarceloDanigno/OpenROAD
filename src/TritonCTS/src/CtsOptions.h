@@ -75,6 +75,10 @@ public:
         bool runAutoLut() const { return _autoLutEnable; }
         void setOnlyCharacterization(bool enable) { _onlyCharacterization = enable; } 
         bool getOnlyCharacterization() const { return _onlyCharacterization; }
+        void setSimpleCts(bool enable) { _simpleCts = enable; } 
+        bool getSimpleCts() const { return _simpleCts; }
+        void setSinkClustering(bool enable) { _sinkClusteringEnable = enable; } 
+        bool getSinkClustering() const { return _sinkClusteringEnable; }
         void setNumMaxLeafSinks(unsigned numSinks) { _numMaxLeafSinks = numSinks; }
         unsigned getNumMaxLeafSinks() const { return _numMaxLeafSinks; }        
         void setMaxSlew(unsigned slew) { _maxSlew = slew; }
@@ -159,6 +163,8 @@ private:
         unsigned    _dbId                       = 0;
         bool        _plotSolution               = false;
         bool        _onlyCharacterization       = false;
+        bool        _simpleCts                  = false;
+        bool        _sinkClusteringEnable       = false;
         bool        _autoLutEnable              = true;
         bool        _simpleSegmentsEnable       = false;
         bool        _vertexBuffersEnable        = false;

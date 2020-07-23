@@ -57,7 +57,7 @@ void HTreeBuilder::preSinkClustering(std::vector<std::pair<float, float>>& sinks
                         _mapLocationToSink[normLocation] = &inst;
                 });
 
-        if (sinks.size() <= 200){
+        if (sinks.size() <= 200 || !(_options->getSinkClustering())){
                 _topLevelSinksClustered = sinks;
                 return;
         }
