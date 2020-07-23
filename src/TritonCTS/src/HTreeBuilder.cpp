@@ -145,7 +145,7 @@ void HTreeBuilder::initSinkRegion() {
         float maxDiameter = (_options->getMaxDiameter() * dbUnits) / _wireSegmentUnit;
 
         preSinkClustering(topLevelSinks, maxDiameter, _options->getSizeSinkClustering());
-        if (topLevelSinks.size() <= 200){
+        if (topLevelSinks.size() <= 200  || !(_options->getSinkClustering())){
                 Box<DBU> sinkRegionDbu = _clock.computeSinkRegion();
                 std::cout << " Original sink region: " << sinkRegionDbu << "\n";
                 
