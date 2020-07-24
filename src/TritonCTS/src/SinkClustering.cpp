@@ -125,7 +125,7 @@ void SinkClustering::run() {
         computeAllThetas();
         sortPoints();
         findBestMatching();        
-        writePlotFile();
+        //writePlotFile();
 }
 
 void SinkClustering::run(unsigned groupSize, float maxDiameter) {
@@ -133,7 +133,7 @@ void SinkClustering::run(unsigned groupSize, float maxDiameter) {
         computeAllThetas();
         sortPoints();
         findBestMatching(groupSize);        
-        writePlotFile(groupSize);
+        //writePlotFile(groupSize);
 }
 
 void SinkClustering::writePlotFile() {

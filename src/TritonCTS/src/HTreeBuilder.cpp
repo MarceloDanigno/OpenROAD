@@ -50,6 +50,8 @@ using ord::error;
 
 void HTreeBuilder::preSinkClustering(std::vector<std::pair<float, float>>& sinks, float maxDiameter, unsigned clusterSize) {
         std::vector<std::pair<float, float>>& points = sinks;
+
+        //
         
         _clock.forEachSink( [&] (ClockInst& inst) {
                         Point<double> normLocation( (float) inst.getX() / _wireSegmentUnit,
@@ -108,6 +110,7 @@ void HTreeBuilder::preSinkClustering(std::vector<std::pair<float, float>>& sinks
                         for (ClockInst* currentClockInst : clusterClockInsts){
                                 clockSubNet.addInst(*currentClockInst);
                         }
+                        clockSubNet.setLeafLevel(true);
                         Point<double> newSinkPos(normCenterX, normCenterY);
                         std::pair<float, float> point(normCenterX, normCenterY);
                         newSinkLocations.emplace_back(point);
@@ -215,7 +218,6 @@ void HTreeBuilder::run() {
         if (_options->getPlotSolution()) {
                 plotSolution();
         }
-        plotSolution();
         
         createClockSubNets();
 
@@ -224,7 +226,12 @@ void HTreeBuilder::run() {
 
 inline 
 unsigned HTreeBuilder::computeNumberOfSinksPerSubRegion(unsigned level) const {
-        unsigned totalNumSinks = _clock.getNumSinks();
+        unsigned totalNumSinks = 0;
+        if (_clock.getNumSinks() > 200 && _options->getSinkClustering()){
+                totalNumSinks = _topLevelSinksClustered.size();
+        } else {
+                totalNumSinks = _clock.getNumSinks();
+        }
         unsigned numRoots = std::pow(2, level);
         double numSinksPerRoot = (double) totalNumSinks / numRoots;
         return (unsigned) std::ceil(numSinksPerRoot);
@@ -561,7 +568,7 @@ void HTreeBuilder::refineBranchingPointsWithClustering(LevelTopology& topology,
         means.emplace_back(branchPt2.getX(), branchPt2.getY());
         
         const unsigned cap = (unsigned) (sinks.size() * _options->getClusteringCapacity());
-        clusteringEngine.iterKmeans(1, means.size(), cap, 0, means, 5, _options->getClusteringPower());
+        clusteringEngine.iterKmeans(1, means.size(), cap, 0, means, 20, _options->getClusteringPower());
         if (((int) _options->getNumStaticLayers() - (int) level) < 0){
                 branchPt1 = Point<double>(means[0].first, means[0].second);
                 branchPt2 = Point<double>(means[1].first, means[1].second);
