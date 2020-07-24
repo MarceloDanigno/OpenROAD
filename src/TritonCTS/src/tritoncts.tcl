@@ -59,14 +59,13 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
                                              [-sink_clustering_enable] \
                                              [-num_static_layers] \
                                              [-sink_clustering_buffer] \
-                                             [-simple_cts] \
                                             } 
 
 proc clock_tree_synthesis { args } {
   sta::parse_key_args "clock_tree_synthesis" args \
     keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter -sink_clustering_size -num_static_layers -sink_clustering_buffer\
     -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -geo_matching_threshold -sink_clustering_max_diameter} \
-    flags {-characterization_only -post_cts_disable -sink_clustering_enable -simple_cts}
+    flags {-characterization_only -post_cts_disable -sink_clustering_enable}
 
   set cts [get_triton_cts]
 
@@ -74,8 +73,6 @@ proc clock_tree_synthesis { args } {
   #                               -lut_file , -sol_list , -root-buf, -wire_unit
   #                                               or
   #                               -buf_list , -sqr_cap , -sqr_res
-  #                                               or
-  #                               -simple_cts , -distance_between_buffers , -root-buf
   #                         -> Other commands can be used as extra parameters or in conjunction with each other:
   #                               ex: clock_tree_synthesis -buf_list "BUFX1 BUFX2" -wire_unit 20 -sqr_cap 1 -sqr_res 2 -clk_nets clk1
 
@@ -83,8 +80,6 @@ proc clock_tree_synthesis { args } {
   $cts set_only_characterization [info exists flags(-characterization_only)]
 
   $cts set_disable_post_cts [info exists flags(-post_cts_disable)]
-
-  $cts set_simple_cts [info exists flags(-simple_cts)]
 
   $cts set_sink_clustering [info exists flags(-sink_clustering_enable)]
 
