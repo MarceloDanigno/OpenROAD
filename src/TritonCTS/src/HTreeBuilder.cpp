@@ -164,8 +164,10 @@ void HTreeBuilder::initSinkRegion() {
 void HTreeBuilder::run() {
         std::cout << " Generating H-Tree topology for net " << _clock.getName() << "...\n";
         std::cout << "    Tot. number of sinks: " << _clock.getNumSinks() << "\n";
-        std::cout << "    Sinks will be clustered in groups of " << _options->getSizeSinkClustering() << " and a maximum diameter of " <<
-                     _options->getMaxDiameter() << " um\n";  
+        if (_options->getSinkClustering()){
+                std::cout << "    Sinks will be clustered in groups of " << _options->getSizeSinkClustering() << 
+                " and a maximum diameter of " << _options->getMaxDiameter() << " um\n";  
+        }
         std::cout << "    Number of static layers: " << _options->getNumStaticLayers() << "\n";
        
         _clockTreeMaxDepth = _options->getClockTreeMaxDepth();
@@ -174,8 +176,6 @@ void HTreeBuilder::run() {
         _minLengthSinkRegion = _techChar->getMinSegmentLength() * 2;
 
         initSinkRegion();
-
-
 
         for (unsigned level = 1; level <= _clockTreeMaxDepth; ++level) {
                 bool stopCriterionFound = false;
@@ -239,8 +239,15 @@ unsigned HTreeBuilder::computeNumberOfSinksPerSubRegion(unsigned level) const {
 
 inline 
 void HTreeBuilder::computeSubRegionSize(unsigned level, double& width, double& height) const {
-        unsigned gridSizeX = computeGridSizeX(level);
-        unsigned gridSizeY = computeGridSizeY(level);
+        unsigned gridSizeX = 0;
+        unsigned gridSizeY = 0;
+        if (isVertical(1)){
+                gridSizeY = computeGridSizeX(level);
+                gridSizeX = computeGridSizeY(level);
+        } else {
+                gridSizeX = computeGridSizeX(level);
+                gridSizeY = computeGridSizeY(level);
+        }
         width = _sinkRegion.getWidth() / gridSizeX;
         height = _sinkRegion.getHeight() / gridSizeY;
 }
@@ -296,14 +303,15 @@ void HTreeBuilder::computeLevelTopology(unsigned level, double width, double hei
                                         key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
                                                                 SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, true, remainingLength);
                                         remainingLength = remainingLength + _options->getBufferDistance() / (_techChar->getLengthUnit());
-                                }
-                                if (remainingLength <= 0){
-                                        key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
-                                                                SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, true, remainingLength);
-                                        remainingLength = remainingLength + _options->getBufferDistance() / (_techChar->getLengthUnit());
                                 } else {
-                                        key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
-                                                                SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, false, remainingLength);
+                                        if (remainingLength <= 0){
+                                                key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
+                                                                        SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, true, remainingLength);
+                                                remainingLength = remainingLength + _options->getBufferDistance() / (_techChar->getLengthUnit());
+                                        } else {
+                                                key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
+                                                                        SLEW_THRESHOLD, INIT_TOLERANCE, outSlew, outCap, false, remainingLength);
+                                        }    
                                 }
                         } else {
                                 key = computeMinDelaySegment(charSegLength, inputSlew, inputCap, 
