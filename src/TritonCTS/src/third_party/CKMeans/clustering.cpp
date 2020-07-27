@@ -256,10 +256,6 @@ float clustering::Kmeans (unsigned N, unsigned CAP, unsigned IDX, vector<pair<fl
             int position = 0;
             if (f->match_idx[IDX].first >= 0 && f->match_idx[IDX].first < N){
                 position = f->match_idx[IDX].first;
-            } else {
-                if (clusters[0].size() >= CAP){
-                    position = 1;
-                }
             }
             clusters[position].push_back(f);
         } 
