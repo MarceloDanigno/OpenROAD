@@ -201,10 +201,6 @@ void TritonCTSKernel::set_clustering_unbalance_ratio(double ratio){
         _options.setClusteringCapacity(ratio);
 }
 
-void TritonCTSKernel::set_geo_matching_threshold(unsigned threshold) {
-	_options.setGeoMatchingThreshold(threshold);
-}
-
 void TritonCTSKernel::set_sink_clustering_size(unsigned size){
         _options.setSizeSinkClustering(size);
 }
