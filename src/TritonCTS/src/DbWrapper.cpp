@@ -86,14 +86,16 @@ void DbWrapper::initAllClocks() {
 
         std::set<odb::dbNet*> clockNets;
 
-        _openSta->findClkNets(clockNets);
-
         //Checks the user input in case there are other nets that need to be added to the set.
         std::vector<odb::dbNet*> inputClkNets = _options->getClockNetsObjs();
 
-        for (odb::dbNet* net : inputClkNets) {
-                //Since a set is unique, only the nets not found by dbSta are added.
-                clockNets.insert(net);
+        if (inputClkNets.size() != 0){
+                for (odb::dbNet* net : inputClkNets) {
+                        //Since a set is unique, only the nets not found by dbSta are added.
+                        clockNets.insert(net);
+                }
+        } else {
+                _openSta->findClkNets(clockNets);
         }
 
         //Iterate over all the nets found by the user-input and dbSta
