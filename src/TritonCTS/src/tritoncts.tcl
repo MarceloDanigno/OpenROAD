@@ -48,6 +48,7 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
                                              [-slew_inter slewvalue] \
                                              [-cap_inter capvalue] \
                                              [-characterization_only] \
+                                             [-tree_buf buf] \
                                              [-post_cts_disable] \
                                              [-distance_between_buffers] \
                                              [-branching_point_buffers_distance] \
@@ -63,7 +64,7 @@ sta::define_cmd_args "clock_tree_synthesis" {[-lut_file lut] \
 proc clock_tree_synthesis { args } {
   sta::parse_key_args "clock_tree_synthesis" args \
     keys {-lut_file -sol_list -root_buf -buf_list -wire_unit -max_cap -max_slew -clk_nets -out_path -sqr_cap -sqr_res -slew_inter -sink_clustering_size -num_static_layers -sink_clustering_buffer\
-    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -sink_clustering_max_diameter} \
+    -cap_inter -distance_between_buffers -branching_point_buffers_distance -clustering_exponent -clustering_unbalance_ratio -sink_clustering_max_diameter -tree_buf} \
     flags {-characterization_only -post_cts_disable -sink_clustering_enable}
 
   set cts [get_triton_cts]
@@ -176,6 +177,11 @@ proc clock_tree_synthesis { args } {
   if { [info exists keys(-cap_inter)] } {
 	  set cap $keys(-cap_inter)
     $cts set_cap_inter $cap 
+  } 
+
+  if { [info exists keys(-tree_buf)] } {
+	  set buf $keys(-tree_buf)
+    $cts set_tree_buf $buf 
   } 
 
   if { [info exists keys(-root_buf)] } {
