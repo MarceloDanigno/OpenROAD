@@ -33,8 +33,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef GEO_MATCHING
-#define GEO_MATCHING
+#pragma once
 
 #include "Util.h"
 
@@ -93,5 +92,3 @@ private:
 };
 
 }
-
-#endif 
