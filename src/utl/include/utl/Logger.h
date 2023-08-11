@@ -85,6 +85,7 @@ namespace utl {
   X(STT)                \
   X(TAP)                \
   X(UKN)                \
+  X(SEC)                \
   X(UPF)                \
   X(UTL)
 

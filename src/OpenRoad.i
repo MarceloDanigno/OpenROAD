@@ -197,6 +197,13 @@ getIOPlacer()
   return openroad->getIOPlacer();
 }
 
+sec::secModule*
+getSecModule()
+{
+  OpenRoad *openroad = getOpenRoad();
+  return openroad->getSecModule();
+}
+
 par::PartitionMgr*
 getPartitionMgr()
 {

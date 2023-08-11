@@ -80,6 +80,7 @@
 #include "rcx/MakeOpenRCX.h"
 #include "rmp/MakeRestructure.h"
 #include "rsz/MakeResizer.hh"
+#include "sec/MakeSec.h"
 #include "sta/StaMain.hh"
 #include "sta/VerilogWriter.hh"
 #include "stt/MakeSteinerTreeBuilder.h"
@@ -154,6 +155,7 @@ OpenRoad::~OpenRoad()
   deleteDistributed(distributer_);
   deleteSteinerTreeBuilder(stt_builder_);
   dft::deleteDft(dft_);
+  deleteSecModule(secModule_);
   delete logger_;
 }
 
@@ -212,6 +214,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   distributer_ = makeDistributed();
   stt_builder_ = makeSteinerTreeBuilder();
   dft_ = dft::makeDft();
+  secModule_ = makeSecModule();
 
   // Init components.
   Openroad_swig_Init(tcl_interp);
@@ -252,6 +255,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   initDistributed(this);
   initSteinerTreeBuilder(this);
   dft::initDft(this);
+  initSecModule(this);
 
   // Import exported commands to global namespace.
   Tcl_Eval(tcl_interp, "sta::define_sta_cmds");

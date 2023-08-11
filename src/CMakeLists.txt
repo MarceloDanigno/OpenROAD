@@ -261,6 +261,7 @@ add_subdirectory(mpl)
 add_subdirectory(mpl2)
 add_subdirectory(rcx)
 add_subdirectory(psm)
+add_subdirectory(sec)
 add_subdirectory(par)
 add_subdirectory(ant)
 add_subdirectory(gui)
@@ -329,6 +330,7 @@ target_link_libraries(openroad
   ant
   upf
   utl
+  sec
   pdn
   dft
   ${ABC_LIBRARY}

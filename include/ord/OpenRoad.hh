@@ -150,6 +150,10 @@ namespace dft {
 class Dft;
 }
 
+namespace sec {
+class secModule;
+}
+
 namespace ord {
 
 using std::string;
@@ -195,6 +199,7 @@ class OpenRoad
   dst::Distributed* getDistributed() { return distributer_; }
   stt::SteinerTreeBuilder* getSteinerTreeBuilder() { return stt_builder_; }
   dft::Dft* getDft() { return dft_; }
+  sec::secModule* getSecModule() { return secModule_; }
 
   // Return the bounding box of the db rows.
   odb::Rect getCore();
@@ -276,6 +281,7 @@ class OpenRoad
   dst::Distributed* distributer_ = nullptr;
   stt::SteinerTreeBuilder* stt_builder_ = nullptr;
   dft::Dft* dft_ = nullptr;
+  sec::secModule* secModule_ = nullptr;
 
   std::set<OpenRoadObserver*> observers_;
 

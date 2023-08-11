@@ -121,6 +121,10 @@ namespace pad {
 class ICeWall;
 }
 
+namespace sec {
+class secModule;
+}
+
 namespace ord {
 
 class Tech;
@@ -171,6 +175,7 @@ class Design
   psm::PDNSim* getPDNSim();
   pdn::PdnGen* getPdnGen();
   pad::ICeWall* getICeWall();
+  sec::secModule* getSecModule();
 
  private:
   Tech* tech_;

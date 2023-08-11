@@ -259,4 +259,10 @@ pad::ICeWall* Design::getICeWall()
   return app->getICeWall();
 }
 
+sec::secModule* Design::getSecModule()
+{
+  auto app = OpenRoad::openRoad();
+  return app->getSecModule();
+}
+
 }  // namespace ord

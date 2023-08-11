@@ -1,0 +1,65 @@
+[INFO ODB-0222] Reading LEF file: asap7_tech_4x_201209.lef
+[WARNING ODB-0279] parse mismatch in layer property LEF58_SPACINGTABLE for layer M4 : "
+    SPACINGTABLE
+    PARALLELRUNLENGTH  SAMEMASK -0.048 0.00 0.200
+	WIDTH  0.000		0.288 0.288 0.288
+	WIDTH  0.100		0.288 0.288 0.288 ;
+
+    SPACINGTABLE
+    PARALLELRUNLENGTH 			0.000 
+	WIDTH  0.000                    0.096  
+	WIDTH  0.100                    0.096  ;"
+[WARNING ODB-0279] parse mismatch in layer property LEF58_SPACINGTABLE for layer M5 : "
+    SPACINGTABLE
+    PARALLELRUNLENGTH  SAMEMASK -0.048 0.00 0.200
+	WIDTH  0.000		0.288 0.288 0.288
+	WIDTH  0.100		0.288 0.288 0.288 ;
+
+    SPACINGTABLE
+    PARALLELRUNLENGTH 			0.000 
+	WIDTH  0.000                    0.096  
+	WIDTH  0.100                    0.096  ;"
+[WARNING ODB-0279] parse mismatch in layer property LEF58_SPACINGTABLE for layer M6 : "
+    SPACINGTABLE
+    PARALLELRUNLENGTH  SAMEMASK -0.064 0.00 0.200
+	WIDTH  0.000		0.384 0.384 0.384
+	WIDTH  0.100		0.384 0.384 0.384 ;
+
+    SPACINGTABLE
+    PARALLELRUNLENGTH 			0.000 
+	WIDTH  0.000                    0.128  
+	WIDTH  0.100                    0.128  ;"
+[WARNING ODB-0279] parse mismatch in layer property LEF58_SPACINGTABLE for layer M7 : "
+    SPACINGTABLE
+    PARALLELRUNLENGTH  SAMEMASK -0.064 0.00 0.200
+	WIDTH  0.000		0.384 0.384 0.384
+	WIDTH  0.100		0.384 0.384 0.384 ;
+
+    SPACINGTABLE
+    PARALLELRUNLENGTH 			0.000 
+	WIDTH  0.000                    0.128  
+	WIDTH  0.100                    0.128  ;"
+[INFO ODB-0223]     Created 25 technology layers
+[INFO ODB-0224]     Created 9 technology vias
+[INFO ODB-0226] Finished LEF file:  asap7_tech_4x_201209.lef
+[INFO ODB-0222] Reading LEF file: asap7sc7p5t_28_SL_4x_220121a.lef
+[INFO ODB-0225]     Created 212 library cells
+[INFO ODB-0226] Finished LEF file:  asap7sc7p5t_28_SL_4x_220121a.lef
+[INFO ODB-0222] Reading LEF file: asap7sc7p5t_28_L_4x_220121a.lef
+[INFO ODB-0225]     Created 212 library cells
+[INFO ODB-0226] Finished LEF file:  asap7sc7p5t_28_L_4x_220121a.lef
+[INFO ODB-0128] Design: Camellia
+[INFO ODB-0130]     Created 393 pins.
+[INFO ODB-0131]     Created 11721 components and 59288 component-terminals.
+[INFO ODB-0132]     Created 2 special nets and 23442 connections.
+[INFO ODB-0133]     Created 10363 nets and 35846 connections.
+[INFO SEC-0001] Running Security Evaluator on the design (site width = 864 DBUs).
+[INFO SEC-0002] Available Routing Track  = 891840.64 um.
+[INFO SEC-0004] Nets and PDN Routing Utilization  = 0.3788576667688075.
+[INFO SEC-0005] Instances Routing Utilization  = 0.005478045943275247.
+[INFO SEC-0006] Evaluation Results:
+		sec_ti_sts = 28
+		sec_ti_sts_max = 1403
+		sec_ti_sts_med = 46
+		sec_ti_sts_sum = 8820
+		sec_ti_fts_sum = 61.56642872879172
